@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MMS Indent Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --panel: #ffffff;
+      --panel-2: #fbfbfc;
+      --line: #e5e7eb;
+      --line-2: #d1d5db;
+      --text: #111827;
+      --muted: #6b7280;
+      --soft: #f3f4f6;
+      --accent: #1d4ed8;
+      --accent-2: #0f766e;
+      --warning: #b45309;
+      --shadow: 0 12px 40px rgba(17, 24, 39, 0.06);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .shell {
+      width: min(1440px, calc(100% - 32px));
+      margin: 24px auto 28px;
+    }
+
+    .top-card,
+    .preview-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .top-card {
+      padding: 18px;
+    }
+
+    
+    .top-grid {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .subcard {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel-2);
+      padding: 18px;
+    }
+
+    
+    .upload-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .upload-box {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: white;
+      padding: 14px;
+    }
+
+    .upload-box label {
+      display: block;
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    
+    input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      font: inherit;
+      color: var(--text);
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: white;
+      padding: 14px;
+    }
+
+    .stat .k {
+      display: block;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 4px;
+    }
+
+    .stat .l {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      font-weight: 600;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid transparent;
+      background: white;
+      color: var(--text);
+      font: inherit;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 11px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: .15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .btn-secondary {
+      border-color: var(--line-2);
+      background: white;
+    }
+
+    .preview-card {
+      margin-top: 18px;
+      overflow: hidden;
+    }
+
+    .preview-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      background: white;
+    }
+
+    .preview-toolbar h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .preview-toolbar p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #10b981;
+    }
+
+    .table-wrap {
+      height: 74vh;
+      min-height: 520px;
+      overflow: auto;
+      background: white;
+    }
+
+    table {
+      width: 100%;
+      min-width: 1250px;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: #f3f4f6;
+      color: #111827;
+      border-bottom: 1px solid var(--line-2);
+      padding: 13px 12px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 11px 12px;
+      border-bottom: 1px solid #eef0f3;
+      font-size: 14px;
+      vertical-align: top;
+      background: white;
+    }
+
+    tbody tr:hover td {
+      background: #fafafa;
+    }
+
+    .group-row td {
+      position: sticky;
+      top: 43px;
+      z-index: 4;
+      background: #f8fafc;
+      color: #0f172a;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .qty-cell input {
+      width: 84px;
+      padding: 9px 10px;
+      border: 1px solid var(--line-2);
+      border-radius: 10px;
+      font: inherit;
+      background: white;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge.india { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+    .badge.dl { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .badge.sosrc { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+
+    .empty {
+      display: grid;
+      place-items: center;
+      height: 100%;
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+
+    .empty h3 {
+      margin: 14px 0 6px;
+      color: var(--text);
+      font-size: 22px;
+    }
+
+    .empty p {
+      margin: 0;
+      max-width: 580px;
+      line-height: 1.7;
+    }
+
+    .log {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: white;
+      padding: 12px 14px;
+      max-height: 180px;
+      overflow: auto;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 1100px) {
+      .top-grid { grid-template-columns: 1fr; }
+      .upload-grid { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .preview-toolbar { flex-direction: column; align-items: flex-start; }
+      .table-wrap { height: 68vh; }
+    }
+
+    @media (max-width: 640px) {
+      .shell { width: min(100% - 16px, 1440px); margin: 16px auto 20px; }
+      .top-card { padding: 18px; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .toolbar-right { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="top-card">
+      <div class="top-grid" style="margin-top:0; grid-template-columns: 1fr;">
+        <div class="subcard">
+          <div class="upload-grid">
+            <div class="upload-box">
+              <label for="masterFile">Books Master</label>
+              <input id="masterFile" type="file" accept=".xlsx,.xls,.csv" />
+            </div>
+            <div class="upload-box">
+              <label for="stockFile">Stock Position</label>
+              <input id="stockFile" type="file" accept=".xlsx,.xls,.csv" />
+            </div>
+            <div class="upload-box">
+              <label for="sosrcFile">MMS Indent File from March (fetch SOSRC status)</label>
+              <input id="sosrcFile" type="file" accept=".xlsx,.xls,.csv" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="buildBtn" class="btn-primary">Build preview</button>
+            <button id="resetBtn" class="btn-secondary">Reset</button>
+          </div>
+
+          <div class="stats" style="margin-top:16px;">
+            <div class="stat"><span id="booksCount" class="k">0</span><span class="l">Books</span></div>
+            <div class="stat"><span id="matchCount" class="k">0</span><span class="l">Matched stock</span></div>
+            <div class="stat"><span id="sosrcCount" class="k">0</span><span class="l">SOSRC items</span></div>
+            <div class="stat"><span id="langCount" class="k">0</span><span class="l">Languages</span></div>
+          </div>
+
+          <div id="log" class="log">Ready.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="preview-card">
+      <div class="preview-toolbar">
+        <div>
+          <h2>Preview</h2>
+        </div>
+        <div class="toolbar-right">
+          <div class="status"><span class="dot"></span><span id="statusText">Waiting for files</span></div>
+          <button id="downloadBtn" class="btn-primary" disabled>Download Excel</button>
+        </div>
+      </div>
+
+      <div id="tableWrap" class="table-wrap">
+        <div class="empty" id="emptyState">
+          <div>
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 16V8M8.5 11.5 12 8l3.5 3.5" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M20 15.5A3.5 3.5 0 0 0 17 9a5.5 5.5 0 0 0-10.58 1.89A4 4 0 0 0 7 19h11a3 3 0 0 0 2-5.5Z" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <h3>No preview yet</h3>
+            <p>Upload the files and build the preview.</p>
+          </div>
+        </div>
+        <table id="previewTable" style="display:none"></table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const validLangs = [
+      'ENGLISH', 'HINDI', 'PUNJABI', 'ASSAMESE', 'BENGALI', 'GUJARATI',
+      'KANNADA', 'KONKANI', 'MALAYALAM', 'MARATHI', 'NEPALI', 'ODIA',
+      'SINDHI', 'TAMIL', 'TELUGU', 'URDU'
+    ];
+
+    const langOrder = ['ENGLISH', 'HINDI', 'PUNJABI'].concat(
+      validLangs.filter(l => !['ENGLISH', 'HINDI', 'PUNJABI'].includes(l)).sort()
+    );
+
+    const state = {
+      rows: [],
+      groupedRows: [],
+      workbookBlob: null,
+      matchedStock: 0,
+      sosrcCount: 0,
+      languagesShown: 0
+    };
+
+    const els = {
+      masterFile: document.getElementById('masterFile'),
+      stockFile: document.getElementById('stockFile'),
+      sosrcFile: document.getElementById('sosrcFile'),
+      buildBtn: document.getElementById('buildBtn'),
+      downloadBtn: document.getElementById('downloadBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      log: document.getElementById('log'),
+      statusText: document.getElementById('statusText'),
+      previewTable: document.getElementById('previewTable'),
+      emptyState: document.getElementById('emptyState'),
+      booksCount: document.getElementById('booksCount'),
+      matchCount: document.getElementById('matchCount'),
+      sosrcCount: document.getElementById('sosrcCount'),
+      langCount: document.getElementById('langCount')
+    };
+
+    function log(message, type = 'info') {
+      const stamp = new Date().toLocaleTimeString();
+      const prefix = type === 'error' ? '[error]' : '[info]';
+      els.log.innerHTML += `\n${stamp} ${prefix} ${escapeHtml(message)}`;
+      els.log.scrollTop = els.log.scrollHeight;
+    }
+
+    function setStatus(text) {
+      els.statusText.textContent = text;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function normalizeKey(value) {
+      return String(value ?? '')
+        .replace(/\u00a0/g, ' ')
+        .replace(/\n/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+    }
+
+    function normalizeMms(value) {
+      return String(value ?? '')
+        .replace(/\.0$/, '')
+        .trim();
+    }
+
+    function normalizeNumber(value) {
+      if (value === null || value === undefined || value === '') return 0;
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+      const cleaned = String(value)
+        .replace(/,/g, '')
+        .replace(/[^0-9.\-]/g, '')
+        .trim();
+
+      if (cleaned === '' || cleaned === '-' || cleaned === '.') return 0;
+
+      const num = Number(cleaned);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function findColumn(obj, candidates) {
+      const keys = Object.keys(obj || {});
+      const map = new Map(keys.map(k => [normalizeKey(k), k]));
+      for (const candidate of candidates) {
+        const found = map.get(normalizeKey(candidate));
+        if (found) return found;
+      }
+      return null;
+    }
+
+    async function readWorkbook(file) {
+      const buffer = await file.arrayBuffer();
+      return XLSX.read(buffer, { type: 'array' });
+    }
+
+    function sheetToRows(sheet) {
+      return XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+    }
+
+    function getHeaderedStockRows(sheet) {
+      const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      const headerRow = raw[2] || [];
+      const dataRows = raw.slice(3);
+      return dataRows
+        .filter(row => row.some(cell => String(cell).trim() !== ''))
+        .map(row => {
+          const obj = {};
+          headerRow.forEach((h, idx) => { obj[String(h).trim()] = row[idx] ?? ''; });
+          obj.__row = row;
+          return obj;
+        });
+    }
+
+    function getBooksSheetRows(workbook, sheetName, headerIndexZeroBased) {
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) throw new Error(`Sheet "${sheetName}" not found.`);
+      const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      const headerRow = raw[headerIndexZeroBased] || [];
+      const dataRows = raw.slice(headerIndexZeroBased + 1);
+      return dataRows
+        .filter(row => row.some(cell => String(cell).trim() !== ''))
+        .map(row => {
+          const obj = {};
+          headerRow.forEach((h, idx) => { obj[String(h).trim()] = row[idx] ?? ''; });
+          return obj;
+        });
+    }
+
+    function currency(value) {
+      return Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function buildGroupedRows(processed) {
+      const out = [];
+      let shown = 0;
+      for (const lang of langOrder) {
+        const group = processed.filter(r => r.language === lang);
+        if (!group.length) continue;
+        shown += 1;
+        out.push({ type: 'group', label: `${lang} BOOKS` });
+        out.push(...group.map(r => ({ type: 'book', ...r })));
+      }
+      state.languagesShown = shown;
+      return out;
+    }
+
+    function renderTable() {
+      const table = els.previewTable;
+      const grouped = state.groupedRows;
+
+      if (!grouped.length) {
+        table.style.display = 'none';
+        els.emptyState.style.display = 'grid';
+        return;
+      }
+
+      els.emptyState.style.display = 'none';
+      table.style.display = 'table';
+
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>MMS Code</th>
+            <th>Title</th>
+            <th>Qty</th>
+            <th>Sale Price</th>
+            <th>Cost Price</th>
+            <th>Sale Amount</th>
+            <th>Cost Amount</th>
+            <th>All India Low Stock</th>
+            <th>DL Low Stock</th>
+            <th>SOSRC</th>
+            <th>V</th>
+            <th>AM</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${grouped.map(row => {
+            if (row.type === 'group') {
+              return `<tr class="group-row"><td colspan="13">${escapeHtml(row.label)}</td></tr>`;
+            }
+            const saleAmount = (Number(row.qty) || 0) * row.salePrice;
+            const costAmount = (Number(row.qty) || 0) * row.costPrice;
+            return `
+              <tr data-row-id="${escapeHtml(row.id)}">
+                <td>${escapeHtml(row.code)}</td>
+                <td>${escapeHtml(row.mmsCode)}</td>
+                <td>${escapeHtml(row.title)}</td>
+                <td class="qty-cell"><input type="number" min="0" step="1" value="${Number(row.qty) || ''}" data-qty-input="${escapeHtml(row.id)}"></td>
+                <td>${currency(row.salePrice)}</td>
+                <td>${currency(row.costPrice)}</td>
+                <td data-sale-amount="${escapeHtml(row.id)}">${currency(saleAmount)}</td>
+                <td data-cost-amount="${escapeHtml(row.id)}">${currency(costAmount)}</td>
+                <td>${row.allIndia ? '<span class="badge india">all india low stock</span>' : ''}</td>
+                <td>${row.dl ? '<span class="badge dl">DL low stock</span>' : ''}</td>
+                <td>${row.sosrc ? '<span class="badge sosrc">SOSRC</span>' : ''}</td>
+                <td>${escapeHtml(String(row.v))}</td>
+                <td>${escapeHtml(String(row.am))}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      `;
+
+      table.querySelectorAll('[data-qty-input]').forEach(input => {
+        input.addEventListener('input', event => {
+          const id = event.target.getAttribute('data-qty-input');
+          const qty = normalizeNumber(event.target.value);
+          const row = state.rows.find(r => r.id === id);
+          if (!row) return;
+          row.qty = qty;
+          const saleCell = table.querySelector(`[data-sale-amount="${CSS.escape(id)}"]`);
+          const costCell = table.querySelector(`[data-cost-amount="${CSS.escape(id)}"]`);
+          if (saleCell) saleCell.textContent = currency(qty * row.salePrice);
+          if (costCell) costCell.textContent = currency(qty * row.costPrice);
+        });
+      });
+    }
+
+    async function buildWorkbookBlob() {
+      const workbook = new ExcelJS.Workbook();
+      const ws = workbook.addWorksheet('BOOKS');
+
+      ws.columns = [
+        { header: 'Code', key: 'code', width: 14 },
+        { header: 'MMS Code', key: 'mmsCode', width: 14 },
+        { header: 'Title', key: 'title', width: 42 },
+        { header: 'Qty', key: 'qty', width: 10 },
+        { header: 'Sale Price', key: 'salePrice', width: 14 },
+        { header: 'Cost Price', key: 'costPrice', width: 14 },
+        { header: 'Sale Amount', key: 'saleAmount', width: 16 },
+        { header: 'Cost Amount', key: 'costAmount', width: 16 },
+        { header: 'All India Low Stock', key: 'allIndia', width: 22 },
+        { header: 'DL Low Stock', key: 'dl', width: 16 },
+        { header: 'SOSRC', key: 'sosrc', width: 12 },
+        { header: 'V', key: 'v', width: 10 },
+        { header: 'AM', key: 'am', width: 10 }
+      ];
+
+      const headerRow = ws.getRow(1);
+      headerRow.font = { bold: true, color: { argb: 'FF111827' } };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      headerRow.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+        };
+      });
+
+      let rowNum = 2;
+      for (const item of state.groupedRows) {
+        if (item.type === 'group') {
+          ws.mergeCells(`A${rowNum}:M${rowNum}`);
+          const cell = ws.getCell(`A${rowNum}`);
+          cell.value = item.label;
+          cell.font = { bold: true, color: { argb: 'FF111827' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+          cell.alignment = { vertical: 'middle', horizontal: 'left' };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+            right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+          };
+          rowNum += 1;
+          continue;
+        }
+
+        const row = ws.getRow(rowNum);
+        row.getCell(1).value = item.code;
+        row.getCell(2).value = item.mmsCode;
+        row.getCell(3).value = item.title;
+        row.getCell(4).value = Number(item.qty) || null;
+        row.getCell(5).value = item.salePrice;
+        row.getCell(6).value = item.costPrice;
+        row.getCell(7).value = { formula: `D${rowNum}*E${rowNum}` };
+        row.getCell(8).value = { formula: `D${rowNum}*F${rowNum}` };
+        row.getCell(9).value = item.allIndia ? 'all india low stock' : '';
+        row.getCell(10).value = item.dl ? 'DL low stock' : '';
+        row.getCell(11).value = item.sosrc ? 'SOSRC' : '';
+        row.getCell(12).value = item.v;
+        row.getCell(13).value = item.am;
+
+        row.eachCell({ includeEmpty: true }, cell => {
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFF0F2F5' } },
+            left: { style: 'thin', color: { argb: 'FFF0F2F5' } },
+            bottom: { style: 'thin', color: { argb: 'FFF0F2F5' } },
+            right: { style: 'thin', color: { argb: 'FFF0F2F5' } }
+          };
+          cell.alignment = { vertical: 'top' };
+        });
+
+        [5, 6, 7, 8].forEach(i => row.getCell(i).numFmt = '#,##0.00');
+        [4, 12, 13].forEach(i => {
+          row.getCell(i).numFmt = '0';
+          row.getCell(i).alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+
+        rowNum += 1;
+      }
+
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
+      const inst = workbook.addWorksheet('Instructions');
+      inst.getCell('A1').value = 'Upload master, stock, and SOSRC files. Enter quantity in Qty column on BOOKS sheet. Sale Amount and Cost Amount calculate automatically.';
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    }
+
+    async function processFiles() {
+      const masterFile = els.masterFile.files[0];
+      const stockFile = els.stockFile.files[0];
+      const sosrcFile = els.sosrcFile.files[0];
+
+      if (!masterFile || !stockFile || !sosrcFile) {
+        throw new Error('Please upload all three files first.');
+      }
+
+      setStatus('Reading files');
+      log('Reading uploaded workbooks...');
+
+      const [masterWb, stockWb, sosrcWb] = await Promise.all([
+        readWorkbook(masterFile),
+        readWorkbook(stockFile),
+        readWorkbook(sosrcFile)
+      ]);
+
+      const masterSheet = masterWb.Sheets[masterWb.SheetNames[0]];
+      const stockSheet = stockWb.Sheets[stockWb.SheetNames[0]];
+
+      const masterRowsRaw = sheetToRows(masterSheet);
+      const stockRowsRaw = getHeaderedStockRows(stockSheet);
+      const sosrcRowsRaw = getBooksSheetRows(sosrcWb, 'BOOKS', 1);
+
+      if (!masterRowsRaw.length) throw new Error('Books Master file appears empty.');
+      if (!stockRowsRaw.length) throw new Error('Stock Position file appears empty after row 3 header parsing.');
+      if (!sosrcRowsRaw.length) throw new Error('SOSRC BOOKS sheet appears empty after row 2 header parsing.');
+
+      log(`Master rows loaded: ${masterRowsRaw.length}`);
+      log(`Stock rows loaded: ${stockRowsRaw.length}`);
+      log(`SOSRC BOOKS rows loaded: ${sosrcRowsRaw.length}`);
+
+      const masterFirst = masterRowsRaw[0];
+      const stockFirst = stockRowsRaw[0];
+      const sosrcFirst = sosrcRowsRaw[0];
+
+      const masterCols = {
+        language: findColumn(masterFirst, ['Language']),
+        langCat: findColumn(masterFirst, ['Laguage Category', 'Language Category']),
+        mms: findColumn(masterFirst, ['MMS Code', 'MMS CODE']),
+        bookName: findColumn(masterFirst, ['Book Name', 'TITLE', 'Title']),
+        bav: findColumn(masterFirst, ['BAV Code', 'CODE', 'Code']),
+        salePrice: findColumn(masterFirst, ['Sale Price(Rs.)', 'SALE PRICE', 'Sale Price']),
+        costPrice: findColumn(masterFirst, ['Cost Price(Rs.)', 'COST PRICE', 'COST  PRICE', 'Cost Price'])
+      };
+
+      const missingMaster = Object.entries(masterCols).filter(([, v]) => !v).map(([k]) => k);
+      if (missingMaster.length) throw new Error(`Master file is missing expected columns: ${missingMaster.join(', ')}`);
+
+      const stockMmsCol = findColumn(stockFirst, ['MMS Code', 'MMS CODE']);
+      if (!stockMmsCol) throw new Error('Stock file MMS Code column not found.');
+
+      const sosrcMmsCol = findColumn(sosrcFirst, ['MMS Code', 'MMS CODE']);
+      const sosrcTitleCol = findColumn(sosrcFirst, ['Title', 'TITLE']);
+      if (!sosrcMmsCol || !sosrcTitleCol) throw new Error('SOSRC BOOKS sheet must include MMS CODE and TITLE columns.');
+
+      const totalStockMap = new Map();
+      const vStockMap = new Map();
+      const amStockMap = new Map();
+
+      for (const row of stockRowsRaw) {
+        const mms = normalizeMms(row[stockMmsCol]);
+        if (!mms || /#REF!/i.test(mms)) continue;
+        const arr = row.__row || [];
+        const v = normalizeNumber(arr[21]);
+        const am = normalizeNumber(arr[38]);
+        totalStockMap.set(mms, v + am);
+        vStockMap.set(mms, v);
+        amStockMap.set(mms, am);
+      }
+
+      const sosrcMmsSet = new Set(
+        sosrcRowsRaw
+          .filter(r => String(r[sosrcTitleCol] ?? '').toUpperCase().includes('SOSRC'))
+          .map(r => normalizeMms(r[sosrcMmsCol]))
+          .filter(Boolean)
+      );
+
+      log(`SOSRC MMS codes found: ${sosrcMmsSet.size}`);
+
+      let matchedStock = 0;
+      let sosrcCount = 0;
+
+      const processed = masterRowsRaw
+        .map((row, idx) => {
+          const language = String(row[masterCols.language] ?? '').trim().toUpperCase();
+          if (!validLangs.includes(language)) return null;
+
+          const langCat = String(row[masterCols.langCat] ?? '').trim().toUpperCase();
+          const mmsCode = normalizeMms(row[masterCols.mms]);
+          const title = String(row[masterCols.bookName] ?? '').trim();
+          const code = String(row[masterCols.bav] ?? '').trim();
+          const salePrice = normalizeNumber(row[masterCols.salePrice]);
+          const costPrice = normalizeNumber(row[masterCols.costPrice]);
+
+          const hasStock = totalStockMap.has(mmsCode);
+          if (hasStock) matchedStock += 1;
+          const totalStock = totalStockMap.get(mmsCode);
+          const v = vStockMap.get(mmsCode) ?? 0;
+          const am = amStockMap.get(mmsCode) ?? 0;
+
+          const allIndia = hasStock && (langCat === 'REGIONAL' ? totalStock <= 10 : totalStock <= 30);
+          const dl = hasStock && v <= 30;
+          const sosrc = sosrcMmsSet.has(mmsCode);
+          if (sosrc) sosrcCount += 1;
+
+          return {
+            id: `${mmsCode || 'row'}-${idx}`,
+            language,
+            code,
+            mmsCode,
+            title,
+            qty: 0,
+            salePrice,
+            costPrice,
+            allIndia,
+            dl,
+            sosrc,
+            v,
+            am
+          };
+        })
+        .filter(Boolean);
+
+      state.rows = processed;
+      state.groupedRows = buildGroupedRows(processed);
+      state.matchedStock = matchedStock;
+      state.sosrcCount = sosrcCount;
+      state.workbookBlob = await buildWorkbookBlob();
+
+      els.booksCount.textContent = String(processed.length);
+      els.matchCount.textContent = String(matchedStock);
+      els.sosrcCount.textContent = String(sosrcCount);
+      els.langCount.textContent = String(state.languagesShown);
+
+      setStatus('Preview ready');
+      log(`Processed ${processed.length} books across ${state.languagesShown} languages.`);
+      log(`Matched stock rows: ${matchedStock}. SOSRC matches: ${sosrcCount}.`);
+      renderTable();
+      els.downloadBtn.disabled = false;
+    }
+
+    els.buildBtn.addEventListener('click', async () => {
+      try {
+        els.buildBtn.disabled = true;
+        els.downloadBtn.disabled = true;
+        setStatus('Processing');
+        log('Starting build...');
+        await processFiles();
+      } catch (error) {
+        console.error(error);
+        setStatus('Error');
+        log(error.message || 'Something went wrong.', 'error');
+        alert(error.message || 'Something went wrong. Check the debug log.');
+      } finally {
+        els.buildBtn.disabled = false;
+      }
+    });
+
+    els.downloadBtn.addEventListener('click', async () => {
+      try {
+        setStatus('Preparing download');
+        state.workbookBlob = await buildWorkbookBlob();
+        saveAs(state.workbookBlob, 'MMS_Indent_Output.xlsx');
+        setStatus('Download complete');
+        log('Excel file downloaded.');
+      } catch (error) {
+        console.error(error);
+        setStatus('Error');
+        log(error.message || 'Could not generate Excel download.', 'error');
+        alert(error.message || 'Could not generate Excel download.');
+      }
+    });
+
+    els.resetBtn.addEventListener('click', () => {
+      els.masterFile.value = '';
+      els.stockFile.value = '';
+      els.sosrcFile.value = '';
+      state.rows = [];
+      state.groupedRows = [];
+      state.workbookBlob = null;
+      state.matchedStock = 0;
+      state.sosrcCount = 0;
+      state.languagesShown = 0;
+      els.booksCount.textContent = '0';
+      els.matchCount.textContent = '0';
+      els.sosrcCount.textContent = '0';
+      els.langCount.textContent = '0';
+      els.log.textContent = 'Ready. Upload all three files and click “Build preview”.';
+      els.previewTable.style.display = 'none';
+      els.previewTable.innerHTML = '';
+      els.emptyState.style.display = 'grid';
+      els.downloadBtn.disabled = true;
+      setStatus('Waiting for files');
+    });
+  </script>
+</body>
+</html>
