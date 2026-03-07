@@ -19,10 +19,7 @@
       --line-2: #d1d5db;
       --text: #111827;
       --muted: #6b7280;
-      --soft: #f3f4f6;
       --accent: #1d4ed8;
-      --accent-2: #0f766e;
-      --warning: #b45309;
       --shadow: 0 12px 40px rgba(17, 24, 39, 0.06);
       --radius: 18px;
     }
@@ -49,17 +46,7 @@
       box-shadow: var(--shadow);
     }
 
-    .top-card {
-      padding: 18px;
-    }
-
-    
-    .top-grid {
-      display: grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap: 18px;
-      margin-top: 22px;
-    }
+    .top-card { padding: 18px; }
 
     .subcard {
       border: 1px solid var(--line);
@@ -68,7 +55,6 @@
       padding: 18px;
     }
 
-    
     .upload-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -82,25 +68,30 @@
       padding: 14px;
     }
 
-    .upload-box label {
+    .upload-box label,
+    .toolbar-filter label {
       display: block;
       font-weight: 700;
-      font-size: 14px;
+      font-size: 12px;
       margin-bottom: 6px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .03em;
     }
 
-    
-    input[type="file"] {
+    input[type="file"],
+    input[type="search"],
+    select {
       width: 100%;
-      padding: 10px;
+      padding: 10px 12px;
       font: inherit;
       color: var(--text);
       background: white;
       border: 1px solid var(--line);
       border-radius: 12px;
+      outline: none;
     }
 
-    
     .stats {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -150,6 +141,7 @@
       border-radius: 12px;
       cursor: pointer;
       transition: .15s ease;
+      white-space: nowrap;
     }
 
     button:hover { transform: translateY(-1px); }
@@ -172,13 +164,19 @@
     }
 
     .preview-toolbar {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      background: white;
+      display: grid;
+      gap: 14px;
+    }
+
+    .preview-toolbar-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 16px 18px;
-      border-bottom: 1px solid var(--line);
-      background: white;
+      flex-wrap: wrap;
     }
 
     .preview-toolbar h2 {
@@ -186,17 +184,22 @@
       font-size: 18px;
     }
 
-    .preview-toolbar p {
-      margin: 4px 0 0;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
     .toolbar-right {
       display: flex;
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
+    }
+
+    .toolbar-filters {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .toolbar-filter {
+      min-width: 0;
     }
 
     .status {
@@ -228,7 +231,7 @@
 
     table {
       width: 100%;
-      min-width: 1250px;
+      min-width: 1050px;
       border-collapse: separate;
       border-spacing: 0;
     }
@@ -292,6 +295,8 @@
       font-weight: 700;
       border: 1px solid transparent;
       white-space: nowrap;
+      margin-right: 6px;
+      margin-bottom: 4px;
     }
 
     .badge.india { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
@@ -333,12 +338,22 @@
       white-space: pre-wrap;
     }
 
+    @media (max-width: 1180px) {
+      .toolbar-filters {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
     @media (max-width: 1100px) {
-      .top-grid { grid-template-columns: 1fr; }
       .upload-grid { grid-template-columns: 1fr; }
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .preview-toolbar { flex-direction: column; align-items: flex-start; }
       .table-wrap { height: 68vh; }
+    }
+
+    @media (max-width: 700px) {
+      .toolbar-filters {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 640px) {
@@ -352,48 +367,95 @@
 <body>
   <div class="shell">
     <section class="top-card">
-      <div class="top-grid" style="margin-top:0; grid-template-columns: 1fr;">
-        <div class="subcard">
-          <div class="upload-grid">
-            <div class="upload-box">
-              <label for="masterFile">Books Master</label>
-              <input id="masterFile" type="file" accept=".xlsx,.xls,.csv" />
-            </div>
-            <div class="upload-box">
-              <label for="stockFile">Stock Position</label>
-              <input id="stockFile" type="file" accept=".xlsx,.xls,.csv" />
-            </div>
-            <div class="upload-box">
-              <label for="sosrcFile">MMS Indent File from March (fetch SOSRC status)</label>
-              <input id="sosrcFile" type="file" accept=".xlsx,.xls,.csv" />
-            </div>
+      <div class="subcard">
+        <div class="upload-grid">
+          <div class="upload-box">
+            <label for="masterFile">Books Master</label>
+            <input id="masterFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           </div>
-
-          <div class="actions">
-            <button id="buildBtn" class="btn-primary">Build preview</button>
-            <button id="resetBtn" class="btn-secondary">Reset</button>
+          <div class="upload-box">
+            <label for="stockFile">Stock Position</label>
+            <input id="stockFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           </div>
-
-          <div class="stats" style="margin-top:16px;">
-            <div class="stat"><span id="booksCount" class="k">0</span><span class="l">Books</span></div>
-            <div class="stat"><span id="matchCount" class="k">0</span><span class="l">Matched stock</span></div>
-            <div class="stat"><span id="sosrcCount" class="k">0</span><span class="l">SOSRC items</span></div>
-            <div class="stat"><span id="langCount" class="k">0</span><span class="l">Languages</span></div>
+          <div class="upload-box">
+            <label for="sosrcFile">SOSRC File</label>
+            <input id="sosrcFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           </div>
-
-          <div id="log" class="log">Ready.</div>
         </div>
+
+        <div class="actions">
+          <button id="buildBtn" class="btn-primary">Build preview</button>
+          <button id="resetBtn" class="btn-secondary">Reset</button>
+        </div>
+
+        <div class="stats" style="margin-top:16px;">
+          <div class="stat"><span id="booksCount" class="k">0</span><span class="l">Shown books</span></div>
+          <div class="stat"><span id="matchCount" class="k">0</span><span class="l">Shown matched stock</span></div>
+          <div class="stat"><span id="sosrcCount" class="k">0</span><span class="l">Shown SOSRC items</span></div>
+          <div class="stat"><span id="langCount" class="k">0</span><span class="l">Shown languages</span></div>
+        </div>
+
+        <div id="log" class="log">Ready.</div>
       </div>
     </section>
 
     <section class="preview-card">
       <div class="preview-toolbar">
-        <div>
-          <h2>Preview</h2>
+        <div class="preview-toolbar-top">
+          <div>
+            <h2>Preview</h2>
+          </div>
+          <div class="toolbar-right">
+            <div class="status"><span class="dot"></span><span id="statusText">Waiting for files</span></div>
+            <button id="downloadBtn" class="btn-primary" disabled>Download Excel</button>
+          </div>
         </div>
-        <div class="toolbar-right">
-          <div class="status"><span class="dot"></span><span id="statusText">Waiting for files</span></div>
-          <button id="downloadBtn" class="btn-primary" disabled>Download Excel</button>
+
+        <div class="toolbar-filters">
+          <div class="toolbar-filter">
+            <label for="searchInput">Search</label>
+            <input id="searchInput" type="search" placeholder="Search by title, MMS code, BAV code, or remarks" />
+          </div>
+
+          <div class="toolbar-filter">
+            <label for="languageFilter">Language</label>
+            <select id="languageFilter">
+              <option value="ALL">All languages</option>
+            </select>
+          </div>
+
+          <div class="toolbar-filter">
+            <label for="remarksFilter">Remarks</label>
+            <select id="remarksFilter">
+              <option value="ALL">All remarks</option>
+              <option value="SOSRC">SOSRC</option>
+              <option value="all india low stock">all india low stock</option>
+              <option value="DL low stock">DL low stock</option>
+              <option value="NO_REMARKS">No remarks</option>
+            </select>
+          </div>
+
+          <div class="toolbar-filter">
+            <label for="sortFilter">Sort</label>
+            <select id="sortFilter">
+              <option value="LANG_TITLE_ASC">Language + Title A-Z</option>
+              <option value="TITLE_ASC">Title A-Z</option>
+              <option value="TITLE_DESC">Title Z-A</option>
+              <option value="MMS_ASC">MMS Code Low-High</option>
+              <option value="MMS_DESC">MMS Code High-Low</option>
+              <option value="BAV_ASC">BAV Code A-Z</option>
+              <option value="BAV_DESC">BAV Code Z-A</option>
+              <option value="SALE_ASC">Sale Price Low-High</option>
+              <option value="SALE_DESC">Sale Price High-Low</option>
+              <option value="COST_ASC">Cost Price Low-High</option>
+              <option value="COST_DESC">Cost Price High-Low</option>
+            </select>
+          </div>
+
+          <div class="toolbar-filter">
+            <label>&nbsp;</label>
+            <button id="clearFiltersBtn" class="btn-secondary" style="width:100%;">Clear</button>
+          </div>
         </div>
       </div>
 
@@ -426,6 +488,7 @@
 
     const state = {
       rows: [],
+      filteredRows: [],
       groupedRows: [],
       workbookBlob: null,
       matchedStock: 0,
@@ -440,6 +503,11 @@
       buildBtn: document.getElementById('buildBtn'),
       downloadBtn: document.getElementById('downloadBtn'),
       resetBtn: document.getElementById('resetBtn'),
+      clearFiltersBtn: document.getElementById('clearFiltersBtn'),
+      searchInput: document.getElementById('searchInput'),
+      languageFilter: document.getElementById('languageFilter'),
+      remarksFilter: document.getElementById('remarksFilter'),
+      sortFilter: document.getElementById('sortFilter'),
       log: document.getElementById('log'),
       statusText: document.getElementById('statusText'),
       previewTable: document.getElementById('previewTable'),
@@ -472,6 +540,7 @@
 
     function normalizeKey(value) {
       return String(value ?? '')
+        .replace(/^\uFEFF/, '')
         .replace(/\u00a0/g, ' ')
         .replace(/\n/g, ' ')
         .replace(/\s+/g, ' ')
@@ -479,10 +548,29 @@
         .toUpperCase();
     }
 
+    function normalizeText(value) {
+      return String(value ?? '')
+        .replace(/^\uFEFF/, '')
+        .replace(/\u00a0/g, ' ')
+        .replace(/\n/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
     function normalizeMms(value) {
       return String(value ?? '')
+        .replace(/^\uFEFF/, '')
         .replace(/\.0$/, '')
         .trim();
+    }
+
+    function normalizeBav(value) {
+      return String(value ?? '')
+        .replace(/^\uFEFF/, '')
+        .replace(/\u00a0/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
     }
 
     function normalizeNumber(value) {
@@ -500,6 +588,16 @@
       return Number.isFinite(num) ? num : 0;
     }
 
+    function compareMixed(a, b) {
+      const aNum = Number(a);
+      const bNum = Number(b);
+      const aNumOk = !Number.isNaN(aNum) && String(a).trim() !== '';
+      const bNumOk = !Number.isNaN(bNum) && String(b).trim() !== '';
+
+      if (aNumOk && bNumOk) return aNum - bNum;
+      return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+    }
+
     function findColumn(obj, candidates) {
       const keys = Object.keys(obj || {});
       const map = new Map(keys.map(k => [normalizeKey(k), k]));
@@ -511,59 +609,248 @@
     }
 
     async function readWorkbook(file) {
+      const fileName = (file.name || '').toLowerCase();
+
+      if (fileName.endsWith('.csv')) {
+        const text = await file.text();
+        return XLSX.read(text, { type: 'string' });
+      }
+
       const buffer = await file.arrayBuffer();
       return XLSX.read(buffer, { type: 'array' });
     }
 
-    function sheetToRows(sheet) {
-      return XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+    function getSheetMatrix(sheet) {
+      return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
     }
 
-    function getHeaderedStockRows(sheet) {
-      const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-      const headerRow = raw[2] || [];
-      const dataRows = raw.slice(3);
+    function rowsFromHeaderIndex(matrix, headerIndex) {
+      const headerRow = matrix[headerIndex] || [];
+      const dataRows = matrix.slice(headerIndex + 1);
+
       return dataRows
         .filter(row => row.some(cell => String(cell).trim() !== ''))
         .map(row => {
           const obj = {};
-          headerRow.forEach((h, idx) => { obj[String(h).trim()] = row[idx] ?? ''; });
+          headerRow.forEach((h, idx) => {
+            const key = String(h ?? '').trim();
+            obj[key] = row[idx] ?? '';
+          });
+          return obj;
+        });
+    }
+
+    function detectHeaderRow(matrix, requiredCandidatesList, maxScanRows = 12) {
+      const scanLimit = Math.min(matrix.length, maxScanRows);
+
+      for (let i = 0; i < scanLimit; i++) {
+        const row = matrix[i] || [];
+        const normalized = row.map(cell => normalizeKey(cell));
+        const rowSet = new Set(normalized);
+
+        const matchesAll = requiredCandidatesList.every(candidateGroup =>
+          candidateGroup.some(candidate => rowSet.has(normalizeKey(candidate)))
+        );
+
+        if (matchesAll) return i;
+      }
+
+      return -1;
+    }
+
+    function getMasterRows(sheet) {
+      const matrix = getSheetMatrix(sheet);
+      const headerIndex = detectHeaderRow(matrix, [
+        ['Language'],
+        ['MMS Code', 'MMS CODE'],
+        ['Book Name', 'TITLE', 'Title']
+      ]);
+
+      if (headerIndex === -1) {
+        throw new Error('Could not detect header row in Books Master file.');
+      }
+
+      return rowsFromHeaderIndex(matrix, headerIndex);
+    }
+
+    function getSosrcRows(sheet) {
+      const matrix = getSheetMatrix(sheet);
+      const headerIndex = detectHeaderRow(matrix, [
+        ['BAV Code', 'CODE', 'Code']
+      ]);
+
+      if (headerIndex === -1) {
+        throw new Error('Could not detect header row in SOSRC file.');
+      }
+
+      return rowsFromHeaderIndex(matrix, headerIndex);
+    }
+
+    function getHeaderedStockRows(sheet) {
+      const raw = getSheetMatrix(sheet);
+      const headerRow = raw[2] || [];
+      const dataRows = raw.slice(3);
+
+      return dataRows
+        .filter(row => row.some(cell => String(cell).trim() !== ''))
+        .map(row => {
+          const obj = {};
+          headerRow.forEach((h, idx) => {
+            obj[String(h).trim()] = row[idx] ?? '';
+          });
           obj.__row = row;
           return obj;
         });
     }
 
-    function getBooksSheetRows(workbook, sheetName, headerIndexZeroBased) {
-      const sheet = workbook.Sheets[sheetName];
-      if (!sheet) throw new Error(`Sheet "${sheetName}" not found.`);
-      const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-      const headerRow = raw[headerIndexZeroBased] || [];
-      const dataRows = raw.slice(headerIndexZeroBased + 1);
-      return dataRows
-        .filter(row => row.some(cell => String(cell).trim() !== ''))
-        .map(row => {
-          const obj = {};
-          headerRow.forEach((h, idx) => { obj[String(h).trim()] = row[idx] ?? ''; });
-          return obj;
-        });
-    }
-
     function currency(value) {
-      return Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return Number(value || 0).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
     }
 
-    function buildGroupedRows(processed) {
+    function buildGroupedRows(rows) {
       const out = [];
       let shown = 0;
+
       for (const lang of langOrder) {
-        const group = processed.filter(r => r.language === lang);
+        const group = rows.filter(r => r.language === lang);
         if (!group.length) continue;
         shown += 1;
         out.push({ type: 'group', label: `${lang} BOOKS` });
         out.push(...group.map(r => ({ type: 'book', ...r })));
       }
+
       state.languagesShown = shown;
       return out;
+    }
+
+    function buildRemarkBadges(remarks) {
+      const parts = String(remarks || '')
+        .split(',')
+        .map(x => x.trim())
+        .filter(Boolean);
+
+      return parts.map(part => {
+        const lower = part.toLowerCase();
+        if (lower === 'all india low stock') {
+          return '<span class="badge india">all india low stock</span>';
+        }
+        else if (lower === 'dl low stock') {
+          return '<span class="badge dl">DL low stock</span>';
+        }
+        if (lower === 'sosrc') {
+          return '<span class="badge sosrc">SOSRC</span>';
+        }
+        return `<span class="badge">${escapeHtml(part)}</span>`;
+      }).join('');
+    }
+
+    function populateLanguageFilter(rows) {
+      const langs = [...new Set(rows.map(r => r.language).filter(Boolean))]
+        .sort((a, b) => {
+          const ai = langOrder.indexOf(a);
+          const bi = langOrder.indexOf(b);
+          if (ai === -1 && bi === -1) return a.localeCompare(b);
+          if (ai === -1) return 1;
+          if (bi === -1) return -1;
+          return ai - bi;
+        });
+
+      els.languageFilter.innerHTML = `
+        <option value="ALL">All languages</option>
+        ${langs.map(lang => `<option value="${escapeHtml(lang)}">${escapeHtml(lang)}</option>`).join('')}
+      `;
+    }
+
+    function sortRows(rows) {
+      const sorted = [...rows];
+      const mode = els.sortFilter.value;
+
+      sorted.sort((a, b) => {
+        switch (mode) {
+          case 'TITLE_ASC':
+            return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+          case 'TITLE_DESC':
+            return b.title.localeCompare(a.title, undefined, { sensitivity: 'base' });
+          case 'MMS_ASC':
+            return compareMixed(a.mmsCode, b.mmsCode);
+          case 'MMS_DESC':
+            return compareMixed(b.mmsCode, a.mmsCode);
+          case 'BAV_ASC':
+            return a.code.localeCompare(b.code, undefined, { sensitivity: 'base', numeric: true });
+          case 'BAV_DESC':
+            return b.code.localeCompare(a.code, undefined, { sensitivity: 'base', numeric: true });
+          case 'SALE_ASC':
+            return a.salePrice - b.salePrice;
+          case 'SALE_DESC':
+            return b.salePrice - a.salePrice;
+          case 'COST_ASC':
+            return a.costPrice - b.costPrice;
+          case 'COST_DESC':
+            return b.costPrice - a.costPrice;
+          case 'LANG_TITLE_ASC':
+          default: {
+            const langCmp = compareMixed(langOrder.indexOf(a.language), langOrder.indexOf(b.language));
+            if (langCmp !== 0) return langCmp;
+            return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+          }
+        }
+      });
+
+      return sorted;
+    }
+
+    function applyFilters() {
+      const searchTerm = normalizeKey(els.searchInput.value);
+      const languageValue = els.languageFilter.value;
+      const remarksValue = els.remarksFilter.value;
+
+      let filtered = state.rows.filter(row => {
+        const matchesSearch = !searchTerm || [
+          row.title,
+          row.mmsCode,
+          row.code,
+          row.remarks
+        ].some(v => normalizeKey(v).includes(searchTerm));
+
+        const matchesLanguage = languageValue === 'ALL' || row.language === languageValue;
+
+        let matchesRemark = true;
+        if (remarksValue === 'NO_REMARKS') {
+          matchesRemark = !String(row.remarks || '').trim();
+        } else if (remarksValue !== 'ALL') {
+          matchesRemark = String(row.remarks || '')
+            .split(',')
+            .map(x => x.trim())
+            .includes(remarksValue);
+        }
+
+        return matchesSearch && matchesLanguage && matchesRemark;
+      });
+
+      filtered = sortRows(filtered);
+
+      state.filteredRows = filtered;
+      state.groupedRows = buildGroupedRows(filtered);
+
+      updateVisibleStats();
+      renderTable();
+    }
+
+    function updateVisibleStats() {
+      const shownBooks = state.filteredRows.length;
+      const shownMatchedStock = state.filteredRows.filter(r => r.hasStock).length;
+      const shownSosrc = state.filteredRows.filter(r =>
+        String(r.remarks || '').split(',').map(x => x.trim()).includes('SOSRC')
+      ).length;
+      const shownLanguages = new Set(state.filteredRows.map(r => r.language)).size;
+
+      els.booksCount.textContent = String(shownBooks);
+      els.matchCount.textContent = String(shownMatchedStock);
+      els.sosrcCount.textContent = String(shownSosrc);
+      els.langCount.textContent = String(shownLanguages);
     }
 
     function renderTable() {
@@ -590,20 +877,18 @@
             <th>Cost Price</th>
             <th>Sale Amount</th>
             <th>Cost Amount</th>
-            <th>All India Low Stock</th>
-            <th>DL Low Stock</th>
-            <th>SOSRC</th>
-            <th>V</th>
-            <th>AM</th>
+            <th>Remarks</th>
           </tr>
         </thead>
         <tbody>
           ${grouped.map(row => {
             if (row.type === 'group') {
-              return `<tr class="group-row"><td colspan="13">${escapeHtml(row.label)}</td></tr>`;
+              return `<tr class="group-row"><td colspan="9">${escapeHtml(row.label)}</td></tr>`;
             }
+
             const saleAmount = (Number(row.qty) || 0) * row.salePrice;
             const costAmount = (Number(row.qty) || 0) * row.costPrice;
+
             return `
               <tr data-row-id="${escapeHtml(row.id)}">
                 <td>${escapeHtml(row.code)}</td>
@@ -614,11 +899,7 @@
                 <td>${currency(row.costPrice)}</td>
                 <td data-sale-amount="${escapeHtml(row.id)}">${currency(saleAmount)}</td>
                 <td data-cost-amount="${escapeHtml(row.id)}">${currency(costAmount)}</td>
-                <td>${row.allIndia ? '<span class="badge india">all india low stock</span>' : ''}</td>
-                <td>${row.dl ? '<span class="badge dl">DL low stock</span>' : ''}</td>
-                <td>${row.sosrc ? '<span class="badge sosrc">SOSRC</span>' : ''}</td>
-                <td>${escapeHtml(String(row.v))}</td>
-                <td>${escapeHtml(String(row.am))}</td>
+                <td>${buildRemarkBadges(row.remarks)}</td>
               </tr>
             `;
           }).join('')}
@@ -631,9 +912,12 @@
           const qty = normalizeNumber(event.target.value);
           const row = state.rows.find(r => r.id === id);
           if (!row) return;
+
           row.qty = qty;
+
           const saleCell = table.querySelector(`[data-sale-amount="${CSS.escape(id)}"]`);
           const costCell = table.querySelector(`[data-cost-amount="${CSS.escape(id)}"]`);
+
           if (saleCell) saleCell.textContent = currency(qty * row.salePrice);
           if (costCell) costCell.textContent = currency(qty * row.costPrice);
         });
@@ -653,11 +937,7 @@
         { header: 'Cost Price', key: 'costPrice', width: 14 },
         { header: 'Sale Amount', key: 'saleAmount', width: 16 },
         { header: 'Cost Amount', key: 'costAmount', width: 16 },
-        { header: 'All India Low Stock', key: 'allIndia', width: 22 },
-        { header: 'DL Low Stock', key: 'dl', width: 16 },
-        { header: 'SOSRC', key: 'sosrc', width: 12 },
-        { header: 'V', key: 'v', width: 10 },
-        { header: 'AM', key: 'am', width: 10 }
+        { header: 'Remarks', key: 'remarks', width: 35 }
       ];
 
       const headerRow = ws.getRow(1);
@@ -674,9 +954,11 @@
       });
 
       let rowNum = 2;
-      for (const item of state.groupedRows) {
+      const fullGroupedRows = buildGroupedRows(sortRows(state.rows));
+
+      for (const item of fullGroupedRows) {
         if (item.type === 'group') {
-          ws.mergeCells(`A${rowNum}:M${rowNum}`);
+          ws.mergeCells(`A${rowNum}:I${rowNum}`);
           const cell = ws.getCell(`A${rowNum}`);
           cell.value = item.label;
           cell.font = { bold: true, color: { argb: 'FF111827' } };
@@ -701,11 +983,7 @@
         row.getCell(6).value = item.costPrice;
         row.getCell(7).value = { formula: `D${rowNum}*E${rowNum}` };
         row.getCell(8).value = { formula: `D${rowNum}*F${rowNum}` };
-        row.getCell(9).value = item.allIndia ? 'all india low stock' : '';
-        row.getCell(10).value = item.dl ? 'DL low stock' : '';
-        row.getCell(11).value = item.sosrc ? 'SOSRC' : '';
-        row.getCell(12).value = item.v;
-        row.getCell(13).value = item.am;
+        row.getCell(9).value = item.remarks || '';
 
         row.eachCell({ includeEmpty: true }, cell => {
           cell.border = {
@@ -718,20 +996,21 @@
         });
 
         [5, 6, 7, 8].forEach(i => row.getCell(i).numFmt = '#,##0.00');
-        [4, 12, 13].forEach(i => {
-          row.getCell(i).numFmt = '0';
-          row.getCell(i).alignment = { vertical: 'middle', horizontal: 'center' };
-        });
+        row.getCell(4).numFmt = '0';
+        row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };
 
         rowNum += 1;
       }
 
       ws.views = [{ state: 'frozen', ySplit: 1 }];
+
       const inst = workbook.addWorksheet('Instructions');
       inst.getCell('A1').value = 'Upload master, stock, and SOSRC files. Enter quantity in Qty column on BOOKS sheet. Sale Amount and Cost Amount calculate automatically.';
 
       const buffer = await workbook.xlsx.writeBuffer();
-      return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      return new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
     }
 
     async function processFiles() {
@@ -744,7 +1023,7 @@
       }
 
       setStatus('Reading files');
-      log('Reading uploaded workbooks...');
+      log('Reading uploaded files...');
 
       const [masterWb, stockWb, sosrcWb] = await Promise.all([
         readWorkbook(masterFile),
@@ -754,18 +1033,19 @@
 
       const masterSheet = masterWb.Sheets[masterWb.SheetNames[0]];
       const stockSheet = stockWb.Sheets[stockWb.SheetNames[0]];
+      const sosrcSheet = sosrcWb.Sheets[sosrcWb.SheetNames[0]];
 
-      const masterRowsRaw = sheetToRows(masterSheet);
+      const masterRowsRaw = getMasterRows(masterSheet);
       const stockRowsRaw = getHeaderedStockRows(stockSheet);
-      const sosrcRowsRaw = getBooksSheetRows(sosrcWb, 'BOOKS', 1);
+      const sosrcRowsRaw = getSosrcRows(sosrcSheet);
 
       if (!masterRowsRaw.length) throw new Error('Books Master file appears empty.');
       if (!stockRowsRaw.length) throw new Error('Stock Position file appears empty after row 3 header parsing.');
-      if (!sosrcRowsRaw.length) throw new Error('SOSRC BOOKS sheet appears empty after row 2 header parsing.');
+      if (!sosrcRowsRaw.length) throw new Error('SOSRC file appears empty.');
 
       log(`Master rows loaded: ${masterRowsRaw.length}`);
       log(`Stock rows loaded: ${stockRowsRaw.length}`);
-      log(`SOSRC BOOKS rows loaded: ${sosrcRowsRaw.length}`);
+      log(`SOSRC rows loaded: ${sosrcRowsRaw.length}`);
 
       const masterFirst = masterRowsRaw[0];
       const stockFirst = stockRowsRaw[0];
@@ -781,65 +1061,95 @@
         costPrice: findColumn(masterFirst, ['Cost Price(Rs.)', 'COST PRICE', 'COST  PRICE', 'Cost Price'])
       };
 
-      const missingMaster = Object.entries(masterCols).filter(([, v]) => !v).map(([k]) => k);
-      if (missingMaster.length) throw new Error(`Master file is missing expected columns: ${missingMaster.join(', ')}`);
+      const missingMaster = Object.entries(masterCols)
+        .filter(([, value]) => !value)
+        .map(([key]) => key);
+
+      if (missingMaster.length) {
+        log(`Master headers found: ${Object.keys(masterFirst).join(' | ')}`, 'error');
+        throw new Error(`Master file is missing expected columns: ${missingMaster.join(', ')}`);
+      }
 
       const stockMmsCol = findColumn(stockFirst, ['MMS Code', 'MMS CODE']);
-      if (!stockMmsCol) throw new Error('Stock file MMS Code column not found.');
+      if (!stockMmsCol) {
+        throw new Error('Stock file MMS Code column not found.');
+      }
 
-      const sosrcMmsCol = findColumn(sosrcFirst, ['MMS Code', 'MMS CODE']);
-      const sosrcTitleCol = findColumn(sosrcFirst, ['Title', 'TITLE']);
-      if (!sosrcMmsCol || !sosrcTitleCol) throw new Error('SOSRC BOOKS sheet must include MMS CODE and TITLE columns.');
+      const sosrcCols = {
+        bav: findColumn(sosrcFirst, ['BAV Code', 'CODE', 'Code'])
+      };
+
+      const missingSosrc = Object.entries(sosrcCols)
+        .filter(([, value]) => !value)
+        .map(([key]) => key);
+
+      if (missingSosrc.length) {
+        log(`SOSRC headers found: ${Object.keys(sosrcFirst).join(' | ')}`, 'error');
+        throw new Error(`SOSRC file is missing expected columns: ${missingSosrc.join(', ')}`);
+      }
 
       const totalStockMap = new Map();
       const vStockMap = new Map();
-      const amStockMap = new Map();
 
       for (const row of stockRowsRaw) {
         const mms = normalizeMms(row[stockMmsCol]);
         if (!mms || /#REF!/i.test(mms)) continue;
+
         const arr = row.__row || [];
         const v = normalizeNumber(arr[21]);
         const am = normalizeNumber(arr[38]);
+
         totalStockMap.set(mms, v + am);
         vStockMap.set(mms, v);
-        amStockMap.set(mms, am);
       }
 
-      const sosrcMmsSet = new Set(
-        sosrcRowsRaw
-          .filter(r => String(r[sosrcTitleCol] ?? '').toUpperCase().includes('SOSRC'))
-          .map(r => normalizeMms(r[sosrcMmsCol]))
-          .filter(Boolean)
-      );
+      const sosrcBavSet = new Set();
 
-      log(`SOSRC MMS codes found: ${sosrcMmsSet.size}`);
+      for (const row of sosrcRowsRaw) {
+        const bavCode = normalizeBav(row[sosrcCols.bav]);
+        if (!bavCode) continue;
+        sosrcBavSet.add(bavCode);
+      }
+
+      log(`SOSRC BAV codes available: ${sosrcBavSet.size}`);
 
       let matchedStock = 0;
       let sosrcCount = 0;
 
       const processed = masterRowsRaw
         .map((row, idx) => {
-          const language = String(row[masterCols.language] ?? '').trim().toUpperCase();
+          const language = normalizeText(row[masterCols.language]).toUpperCase();
           if (!validLangs.includes(language)) return null;
 
-          const langCat = String(row[masterCols.langCat] ?? '').trim().toUpperCase();
+          const langCat = normalizeText(row[masterCols.langCat]).toUpperCase();
           const mmsCode = normalizeMms(row[masterCols.mms]);
-          const title = String(row[masterCols.bookName] ?? '').trim();
-          const code = String(row[masterCols.bav] ?? '').trim();
+          const title = normalizeText(row[masterCols.bookName]);
+          const code = normalizeText(row[masterCols.bav]);
+          const bavKey = normalizeBav(row[masterCols.bav]);
           const salePrice = normalizeNumber(row[masterCols.salePrice]);
           const costPrice = normalizeNumber(row[masterCols.costPrice]);
 
           const hasStock = totalStockMap.has(mmsCode);
           if (hasStock) matchedStock += 1;
-          const totalStock = totalStockMap.get(mmsCode);
-          const v = vStockMap.get(mmsCode) ?? 0;
-          const am = amStockMap.get(mmsCode) ?? 0;
 
-          const allIndia = hasStock && (langCat === 'REGIONAL' ? totalStock <= 10 : totalStock <= 30);
-          const dl = hasStock && v <= 30;
-          const sosrc = sosrcMmsSet.has(mmsCode);
-          if (sosrc) sosrcCount += 1;
+          const totalStock = totalStockMap.get(mmsCode);
+          const vStock = vStockMap.get(mmsCode);
+
+          const isSosrc = sosrcBavSet.has(bavKey);
+          if (isSosrc) sosrcCount += 1;
+
+          const remarks = [];
+
+          if (hasStock) {
+            const allIndia = langCat === 'REGIONAL'
+              ? totalStock <= 10
+              : totalStock <= 30;
+
+            if (allIndia) remarks.push('all india low stock');
+            else if (vStock !== undefined && vStock <= 30) remarks.push('DL low stock');
+          }
+
+          if (isSosrc) remarks.push('SOSRC');
 
           return {
             id: `${mmsCode || 'row'}-${idx}`,
@@ -850,30 +1160,23 @@
             qty: 0,
             salePrice,
             costPrice,
-            allIndia,
-            dl,
-            sosrc,
-            v,
-            am
+            remarks: remarks.join(', '),
+            hasStock
           };
         })
         .filter(Boolean);
 
       state.rows = processed;
-      state.groupedRows = buildGroupedRows(processed);
+      state.filteredRows = [...processed];
+      populateLanguageFilter(processed);
+      applyFilters();
       state.matchedStock = matchedStock;
       state.sosrcCount = sosrcCount;
       state.workbookBlob = await buildWorkbookBlob();
 
-      els.booksCount.textContent = String(processed.length);
-      els.matchCount.textContent = String(matchedStock);
-      els.sosrcCount.textContent = String(sosrcCount);
-      els.langCount.textContent = String(state.languagesShown);
-
       setStatus('Preview ready');
-      log(`Processed ${processed.length} books across ${state.languagesShown} languages.`);
-      log(`Matched stock rows: ${matchedStock}. SOSRC matches: ${sosrcCount}.`);
-      renderTable();
+      log(`Processed ${processed.length} books.`);
+      log(`Matched stock rows: ${matchedStock}. SOSRC matches by BAV Code: ${sosrcCount}.`);
       els.downloadBtn.disabled = false;
     }
 
@@ -888,7 +1191,7 @@
         console.error(error);
         setStatus('Error');
         log(error.message || 'Something went wrong.', 'error');
-        alert(error.message || 'Something went wrong. Check the debug log.');
+        alert(error.message || 'Something went wrong. Check the log.');
       } finally {
         els.buildBtn.disabled = false;
       }
@@ -909,21 +1212,41 @@
       }
     });
 
+    els.searchInput.addEventListener('input', applyFilters);
+    els.languageFilter.addEventListener('change', applyFilters);
+    els.remarksFilter.addEventListener('change', applyFilters);
+    els.sortFilter.addEventListener('change', applyFilters);
+
+    els.clearFiltersBtn.addEventListener('click', () => {
+      els.searchInput.value = '';
+      els.languageFilter.value = 'ALL';
+      els.remarksFilter.value = 'ALL';
+      els.sortFilter.value = 'LANG_TITLE_ASC';
+      applyFilters();
+    });
+
     els.resetBtn.addEventListener('click', () => {
       els.masterFile.value = '';
       els.stockFile.value = '';
       els.sosrcFile.value = '';
+      els.searchInput.value = '';
+      els.languageFilter.innerHTML = '<option value="ALL">All languages</option>';
+      els.remarksFilter.value = 'ALL';
+      els.sortFilter.value = 'LANG_TITLE_ASC';
+
       state.rows = [];
+      state.filteredRows = [];
       state.groupedRows = [];
       state.workbookBlob = null;
       state.matchedStock = 0;
       state.sosrcCount = 0;
       state.languagesShown = 0;
+
       els.booksCount.textContent = '0';
       els.matchCount.textContent = '0';
       els.sosrcCount.textContent = '0';
       els.langCount.textContent = '0';
-      els.log.textContent = 'Ready. Upload all three files and click “Build preview”.';
+      els.log.textContent = 'Ready.';
       els.previewTable.style.display = 'none';
       els.previewTable.innerHTML = '';
       els.emptyState.style.display = 'grid';
