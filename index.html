@@ -22,6 +22,14 @@
       --accent: #1d4ed8;
       --shadow: 0 12px 40px rgba(17, 24, 39, 0.06);
       --radius: 18px;
+
+      --excel-header: #d8ffff;
+      --excel-group: #00008b;
+      --excel-group-text: #ffffff;
+      --excel-sosrc: #f8d7da;
+      --excel-dl: #bfc3c9;
+      --excel-body: #d8ffff;
+      --excel-border: #111111;
     }
 
     * { box-sizing: border-box; }
@@ -231,20 +239,32 @@
 
     table {
       width: 100%;
-      min-width: 1050px;
+      min-width: 1120px;
       border-collapse: separate;
       border-spacing: 0;
+      table-layout: fixed;
     }
+
+    col.code-col { width: 115px; }
+    col.mms-col { width: 67px; }
+    col.title-col { width: 327px; }
+    col.qty-col { width: 67px; }
+    col.sale-col { width: 75px; }
+    col.cost-col { width: 72px; }
+    col.saleamt-col { width: 83px; }
+    col.costamt-col { width: 95px; }
+    col.remarks-col { width: 140px; }
 
     thead th {
       position: sticky;
-      top: 0;
       z-index: 5;
-      background: #f3f4f6;
+      background: var(--excel-header);
       color: #111827;
-      border-bottom: 1px solid var(--line-2);
-      padding: 13px 12px;
-      text-align: left;
+      border-right: 1px solid var(--excel-border);
+      border-bottom: 1px solid var(--excel-border);
+      border-top: 1px solid var(--excel-border);
+      padding: 13px 8px;
+      text-align: center;
       font-size: 12px;
       font-weight: 800;
       text-transform: uppercase;
@@ -252,56 +272,88 @@
       white-space: nowrap;
     }
 
+    thead tr:first-child th {
+      top: 0;
+      font-size: 16px;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 500;
+      height: 54px;
+    }
+
+    thead tr:nth-child(2) th {
+      top: 54px;
+      font-size: 18px;
+      line-height: 1.1;
+      height: 74px;
+    }
+
+    thead th:first-child,
+    tbody td:first-child {
+      border-left: 1px solid var(--excel-border);
+    }
+
     tbody td {
-      padding: 11px 12px;
-      border-bottom: 1px solid #eef0f3;
+      padding: 11px 10px;
+      border-right: 1px solid var(--excel-border);
+      border-bottom: 1px solid var(--excel-border);
       font-size: 14px;
       vertical-align: top;
-      background: white;
+      background: var(--excel-body);
     }
 
     tbody tr:hover td {
-      background: #fafafa;
+      filter: brightness(0.99);
     }
 
     .group-row td {
       position: sticky;
-      top: 43px;
+      top: 128px;
       z-index: 4;
-      background: #f8fafc;
-      color: #0f172a;
+      background: var(--excel-group);
+      color: var(--excel-group-text);
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: .03em;
-      border-top: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
+      border-top: 1px solid var(--excel-border);
+      border-bottom: 1px solid var(--excel-border);
+      height: 34px;
+      padding: 4px 10px;
+    }
+
+    .data-row td {
+      background: var(--excel-body);
+    }
+
+    .data-row.sosrc-row td {
+      background: var(--excel-sosrc);
+    }
+
+    .data-row.dl-row td {
+      background: var(--excel-dl);
     }
 
     .qty-cell input {
-      width: 84px;
-      padding: 9px 10px;
-      border: 1px solid var(--line-2);
-      border-radius: 10px;
+      width: 54px;
+      padding: 7px 8px;
+      border: 1px solid #9ca3af;
+      border-radius: 4px;
       font: inherit;
       background: white;
     }
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      border: 1px solid transparent;
-      white-space: nowrap;
-      margin-right: 6px;
-      margin-bottom: 4px;
+    .title-cell,
+    .code-cell,
+    .mms-cell {
+      font-weight: 600;
     }
 
-    .badge.india { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
-    .badge.dl { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-    .badge.sosrc { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+    .remarks-text {
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.35;
+      white-space: pre-line;
+    }
 
     .empty {
       display: grid;
@@ -429,7 +481,7 @@
             <select id="remarksFilter">
               <option value="ALL">All remarks</option>
               <option value="SOSRC">SOSRC</option>
-              <option value="all india low stock">all india low stock</option>
+              <option value="All India low stock">All India low stock</option>
               <option value="DL low stock">DL low stock</option>
               <option value="NO_REMARKS">No remarks</option>
             </select>
@@ -443,8 +495,8 @@
               <option value="TITLE_DESC">Title Z-A</option>
               <option value="MMS_ASC">MMS Code Low-High</option>
               <option value="MMS_DESC">MMS Code High-Low</option>
-              <option value="BAV_ASC">BAV Code A-Z</option>
-              <option value="BAV_DESC">BAV Code Z-A</option>
+              <option value="CODE_ASC">Code A-Z</option>
+              <option value="CODE_DESC">Code Z-A</option>
               <option value="SALE_ASC">Sale Price Low-High</option>
               <option value="SALE_DESC">Sale Price High-Low</option>
               <option value="COST_ASC">Cost Price Low-High</option>
@@ -564,7 +616,7 @@
         .trim();
     }
 
-    function normalizeBav(value) {
+    function normalizeCode(value) {
       return String(value ?? '')
         .replace(/^\uFEFF/, '')
         .replace(/\u00a0/g, ' ')
@@ -676,7 +728,8 @@
     function getSosrcRows(sheet) {
       const matrix = getSheetMatrix(sheet);
       const headerIndex = detectHeaderRow(matrix, [
-        ['BAV Code', 'CODE', 'Code']
+        ['Short Code', 'SHORT CODE', 'Code', 'CODE'],
+        ['Book Name', 'BOOK NAME', 'Title', 'TITLE']
       ]);
 
       if (headerIndex === -1) {
@@ -726,25 +779,13 @@
       return out;
     }
 
-    function buildRemarkBadges(remarks) {
+    function formatRemarkText(remarks) {
       const parts = String(remarks || '')
         .split(',')
         .map(x => x.trim())
         .filter(Boolean);
 
-      return parts.map(part => {
-        const lower = part.toLowerCase();
-        if (lower === 'all india low stock') {
-          return '<span class="badge india">all india low stock</span>';
-        }
-        else if (lower === 'dl low stock') {
-          return '<span class="badge dl">DL low stock</span>';
-        }
-        if (lower === 'sosrc') {
-          return '<span class="badge sosrc">SOSRC</span>';
-        }
-        return `<span class="badge">${escapeHtml(part)}</span>`;
-      }).join('');
+      return parts.join(', ');
     }
 
     function populateLanguageFilter(rows) {
@@ -778,9 +819,9 @@
             return compareMixed(a.mmsCode, b.mmsCode);
           case 'MMS_DESC':
             return compareMixed(b.mmsCode, a.mmsCode);
-          case 'BAV_ASC':
+          case 'CODE_ASC':
             return a.code.localeCompare(b.code, undefined, { sensitivity: 'base', numeric: true });
-          case 'BAV_DESC':
+          case 'CODE_DESC':
             return b.code.localeCompare(a.code, undefined, { sensitivity: 'base', numeric: true });
           case 'SALE_ASC':
             return a.salePrice - b.salePrice;
@@ -792,7 +833,11 @@
             return b.costPrice - a.costPrice;
           case 'LANG_TITLE_ASC':
           default: {
-            const langCmp = compareMixed(langOrder.indexOf(a.language), langOrder.indexOf(b.language));
+            const ai = langOrder.indexOf(a.language);
+            const bi = langOrder.indexOf(b.language);
+            const safeAi = ai === -1 ? 999 : ai;
+            const safeBi = bi === -1 ? 999 : bi;
+            const langCmp = safeAi - safeBi;
             if (langCmp !== 0) return langCmp;
             return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
           }
@@ -867,14 +912,29 @@
       table.style.display = 'table';
 
       table.innerHTML = `
+        <colgroup>
+          <col class="code-col">
+          <col class="mms-col">
+          <col class="title-col">
+          <col class="qty-col">
+          <col class="sale-col">
+          <col class="cost-col">
+          <col class="saleamt-col">
+          <col class="costamt-col">
+          <col class="remarks-col">
+        </colgroup>
         <thead>
           <tr>
-            <th>Code</th>
-            <th>MMS Code</th>
-            <th>Title</th>
-            <th>Qty</th>
-            <th>Sale Price</th>
-            <th>Cost Price</th>
+            <th colspan="4" style="text-align:left;">Centre</th>
+            <th colspan="5" style="text-align:center;">Date</th>
+          </tr>
+          <tr>
+            <th>CODE</th>
+            <th>MMS CODE</th>
+            <th style="text-align:left;">TITLE</th>
+            <th>Qty.</th>
+            <th>SALE PRICE</th>
+            <th>COST<br>PRICE</th>
             <th>Sale Amount</th>
             <th>Cost Amount</th>
             <th>Remarks</th>
@@ -883,23 +943,40 @@
         <tbody>
           ${grouped.map(row => {
             if (row.type === 'group') {
-              return `<tr class="group-row"><td colspan="9">${escapeHtml(row.label)}</td></tr>`;
+              return `
+                <tr class="group-row">
+                  <td></td>
+                  <td></td>
+                  <td>${escapeHtml(row.label)}</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                </tr>
+              `;
             }
 
             const saleAmount = (Number(row.qty) || 0) * row.salePrice;
             const costAmount = (Number(row.qty) || 0) * row.costPrice;
+            const rowClasses = [
+              'data-row',
+              row.isSosrc ? 'sosrc-row' : '',
+              row.isDlLow ? 'dl-row' : ''
+            ].filter(Boolean).join(' ');
 
             return `
-              <tr data-row-id="${escapeHtml(row.id)}">
-                <td>${escapeHtml(row.code)}</td>
-                <td>${escapeHtml(row.mmsCode)}</td>
-                <td>${escapeHtml(row.title)}</td>
+              <tr class="${rowClasses}" data-row-id="${escapeHtml(row.id)}">
+                <td class="code-cell">${escapeHtml(row.code)}</td>
+                <td class="mms-cell">${escapeHtml(row.mmsCode)}</td>
+                <td class="title-cell">${escapeHtml(row.title)}</td>
                 <td class="qty-cell"><input type="number" min="0" step="1" value="${Number(row.qty) || ''}" data-qty-input="${escapeHtml(row.id)}"></td>
                 <td>${currency(row.salePrice)}</td>
                 <td>${currency(row.costPrice)}</td>
                 <td data-sale-amount="${escapeHtml(row.id)}">${currency(saleAmount)}</td>
                 <td data-cost-amount="${escapeHtml(row.id)}">${currency(costAmount)}</td>
-                <td>${buildRemarkBadges(row.remarks)}</td>
+                <td><div class="remarks-text">${escapeHtml(formatRemarkText(row.remarks))}</div></td>
               </tr>
             `;
           }).join('')}
@@ -929,47 +1006,88 @@
       const ws = workbook.addWorksheet('BOOKS');
 
       ws.columns = [
-        { header: 'Code', key: 'code', width: 14 },
-        { header: 'MMS Code', key: 'mmsCode', width: 14 },
-        { header: 'Title', key: 'title', width: 42 },
-        { header: 'Qty', key: 'qty', width: 10 },
-        { header: 'Sale Price', key: 'salePrice', width: 14 },
-        { header: 'Cost Price', key: 'costPrice', width: 14 },
-        { header: 'Sale Amount', key: 'saleAmount', width: 16 },
-        { header: 'Cost Amount', key: 'costAmount', width: 16 },
-        { header: 'Remarks', key: 'remarks', width: 35 }
+        { key: 'code', width: 16.5 },
+        { key: 'mmsCode', width: 9.6 },
+        { key: 'title', width: 46.5 },
+        { key: 'qty', width: 9.6 },
+        { key: 'salePrice', width: 10.7 },
+        { key: 'costPrice', width: 10.3 },
+        { key: 'saleAmount', width: 11.8 },
+        { key: 'costAmount', width: 13.5 },
+        { key: 'remarks', width: 20 }
       ];
 
-      const headerRow = ws.getRow(1);
-      headerRow.font = { bold: true, color: { argb: 'FF111827' } };
-      headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-      headerRow.eachCell(cell => {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+      ws.mergeCells('A1:D1');
+      ws.mergeCells('E1:I1');
+      ws.getCell('A1').value = 'Centre';
+      ws.getCell('E1').value = 'Date';
+
+      ['A1', 'E1'].forEach(addr => {
+        const cell = ws.getCell(addr);
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD8FFFF' } };
+        cell.font = { name: 'Arial', size: 10, bold: false, color: { argb: 'FF111111' } };
+        cell.alignment = { vertical: 'middle', horizontal: addr === 'A1' ? 'left' : 'center' };
         cell.border = {
-          top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-          left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-          bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-          right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+          top: { style: 'thin', color: { argb: 'FF111111' } },
+          left: { style: 'thin', color: { argb: 'FF111111' } },
+          bottom: { style: 'thin', color: { argb: 'FF111111' } },
+          right: { style: 'thin', color: { argb: 'FF111111' } }
         };
       });
 
-      let rowNum = 2;
+      ws.getRow(1).height = 24;
+
+      const headers = [
+        'CODE',
+        'MMS CODE',
+        'TITLE',
+        'Qty.',
+        'SALE PRICE',
+        'COST PRICE',
+        'Sale Amount',
+        'Cost Amount',
+        'Remarks'
+      ];
+
+      headers.forEach((header, index) => {
+        const cell = ws.getCell(2, index + 1);
+        cell.value = header;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD8FFFF' } };
+        cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF111111' } };
+        cell.alignment = {
+          vertical: 'middle',
+          horizontal: index === 2 ? 'left' : 'center',
+          wrapText: true
+        };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF111111' } },
+          left: { style: 'thin', color: { argb: 'FF111111' } },
+          bottom: { style: 'thin', color: { argb: 'FF111111' } },
+          right: { style: 'thin', color: { argb: 'FF111111' } }
+        };
+      });
+
+      ws.getRow(2).height = 40;
+
+      let rowNum = 3;
       const fullGroupedRows = buildGroupedRows(sortRows(state.rows));
 
       for (const item of fullGroupedRows) {
         if (item.type === 'group') {
-          ws.mergeCells(`A${rowNum}:I${rowNum}`);
-          const cell = ws.getCell(`A${rowNum}`);
-          cell.value = item.label;
-          cell.font = { bold: true, color: { argb: 'FF111827' } };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
-          cell.alignment = { vertical: 'middle', horizontal: 'left' };
-          cell.border = {
-            top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-            left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-            bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-            right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
-          };
+          for (let col = 1; col <= 9; col++) {
+            const cell = ws.getCell(rowNum, col);
+            cell.value = col === 3 ? item.label : '';
+            cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00008B' } };
+            cell.alignment = { vertical: 'middle', horizontal: col === 3 ? 'left' : 'center' };
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FF111111' } },
+              left: { style: 'thin', color: { argb: 'FF111111' } },
+              bottom: { style: 'thin', color: { argb: 'FF111111' } },
+              right: { style: 'thin', color: { argb: 'FF111111' } }
+            };
+          }
+          ws.getRow(rowNum).height = 20;
           rowNum += 1;
           continue;
         }
@@ -985,14 +1103,20 @@
         row.getCell(8).value = { formula: `D${rowNum}*F${rowNum}` };
         row.getCell(9).value = item.remarks || '';
 
+        let fillArgb = 'FFD8FFFF';
+        if (item.isSosrc) fillArgb = 'FFF8D7DA';
+        else if (item.isDlLow) fillArgb = 'FFBFC3C9';
+
         row.eachCell({ includeEmpty: true }, cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillArgb } };
           cell.border = {
-            top: { style: 'thin', color: { argb: 'FFF0F2F5' } },
-            left: { style: 'thin', color: { argb: 'FFF0F2F5' } },
-            bottom: { style: 'thin', color: { argb: 'FFF0F2F5' } },
-            right: { style: 'thin', color: { argb: 'FFF0F2F5' } }
+            top: { style: 'thin', color: { argb: 'FF111111' } },
+            left: { style: 'thin', color: { argb: 'FF111111' } },
+            bottom: { style: 'thin', color: { argb: 'FF111111' } },
+            right: { style: 'thin', color: { argb: 'FF111111' } }
           };
-          cell.alignment = { vertical: 'top' };
+          cell.alignment = { vertical: 'top', wrapText: true };
+          cell.font = { name: 'Arial', size: 10, bold: false, color: { argb: 'FF111111' } };
         });
 
         [5, 6, 7, 8].forEach(i => row.getCell(i).numFmt = '#,##0.00');
@@ -1002,10 +1126,7 @@
         rowNum += 1;
       }
 
-      ws.views = [{ state: 'frozen', ySplit: 1 }];
-
-      const inst = workbook.addWorksheet('Instructions');
-      inst.getCell('A1').value = 'Upload master, stock, and SOSRC files. Enter quantity in Qty column on BOOKS sheet. Sale Amount and Cost Amount calculate automatically.';
+      ws.views = [{ state: 'frozen', ySplit: 2 }];
 
       const buffer = await workbook.xlsx.writeBuffer();
       return new Blob([buffer], {
@@ -1056,7 +1177,8 @@
         langCat: findColumn(masterFirst, ['Laguage Category', 'Language Category']),
         mms: findColumn(masterFirst, ['MMS Code', 'MMS CODE']),
         bookName: findColumn(masterFirst, ['Book Name', 'TITLE', 'Title']),
-        bav: findColumn(masterFirst, ['BAV Code', 'CODE', 'Code']),
+        shortCode: findColumn(masterFirst, ['Short Code', 'SHORT CODE']),
+        bavCode: findColumn(masterFirst, ['BAV Code', 'BAV CODE', 'Code', 'CODE']),
         salePrice: findColumn(masterFirst, ['Sale Price(Rs.)', 'SALE PRICE', 'Sale Price']),
         costPrice: findColumn(masterFirst, ['Cost Price(Rs.)', 'COST PRICE', 'COST  PRICE', 'Cost Price'])
       };
@@ -1076,7 +1198,8 @@
       }
 
       const sosrcCols = {
-        bav: findColumn(sosrcFirst, ['BAV Code', 'CODE', 'Code'])
+        shortCode: findColumn(sosrcFirst, ['Short Code', 'SHORT CODE', 'Code', 'CODE']),
+        bookName: findColumn(sosrcFirst, ['Book Name', 'BOOK NAME', 'Title', 'TITLE'])
       };
 
       const missingSosrc = Object.entries(sosrcCols)
@@ -1103,15 +1226,15 @@
         vStockMap.set(mms, v);
       }
 
-      const sosrcBavSet = new Set();
+      const sosrcShortCodeSet = new Set();
 
       for (const row of sosrcRowsRaw) {
-        const bavCode = normalizeBav(row[sosrcCols.bav]);
-        if (!bavCode) continue;
-        sosrcBavSet.add(bavCode);
+        const shortCode = normalizeCode(row[sosrcCols.shortCode]);
+        if (!shortCode) continue;
+        sosrcShortCodeSet.add(shortCode);
       }
 
-      log(`SOSRC BAV codes available: ${sosrcBavSet.size}`);
+      log(`SOSRC short codes available: ${sosrcShortCodeSet.size}`);
 
       let matchedStock = 0;
       let sosrcCount = 0;
@@ -1124,29 +1247,38 @@
           const langCat = normalizeText(row[masterCols.langCat]).toUpperCase();
           const mmsCode = normalizeMms(row[masterCols.mms]);
           const title = normalizeText(row[masterCols.bookName]);
-          const code = normalizeText(row[masterCols.bav]);
-          const bavKey = normalizeBav(row[masterCols.bav]);
+          const bavCode = normalizeText(row[masterCols.bavCode]);
+          const shortCodeKey = normalizeCode(row[masterCols.shortCode]);
           const salePrice = normalizeNumber(row[masterCols.salePrice]);
           const costPrice = normalizeNumber(row[masterCols.costPrice]);
 
           const hasStock = totalStockMap.has(mmsCode);
           if (hasStock) matchedStock += 1;
 
-          const totalStock = totalStockMap.get(mmsCode);
-          const vStock = vStockMap.get(mmsCode);
+          const totalStock = totalStockMap.get(mmsCode) || 0;
+          const vStock = vStockMap.get(mmsCode) || 0;
 
-          const isSosrc = sosrcBavSet.has(bavKey);
+          const isSosrc = sosrcShortCodeSet.has(shortCodeKey);
           if (isSosrc) sosrcCount += 1;
 
-          const remarks = [];
+          let allIndiaLow = false;
+          let dlLow = false;
 
           if (hasStock) {
-            const allIndia = langCat === 'REGIONAL'
-              ? totalStock <= 10
-              : totalStock <= 30;
+            if (langCat === 'REGIONAL') {
+              allIndiaLow = totalStock < 10;
+            } else {
+              allIndiaLow = totalStock < 30;
+            }
 
-            if (allIndia) remarks.push('all india low stock');
-            else if (vStock !== undefined && vStock <= 30) remarks.push('DL low stock');
+            dlLow = vStock < 30;
+          }
+
+          const remarks = [];
+          if (allIndiaLow) {
+            remarks.push('All India low stock');
+          } else if (dlLow) {
+            remarks.push('DL low stock');
           }
 
           if (isSosrc) remarks.push('SOSRC');
@@ -1154,14 +1286,17 @@
           return {
             id: `${mmsCode || 'row'}-${idx}`,
             language,
-            code,
+            code: bavCode,
             mmsCode,
             title,
             qty: 0,
             salePrice,
             costPrice,
             remarks: remarks.join(', '),
-            hasStock
+            hasStock,
+            isSosrc,
+            isDlLow: !allIndiaLow && dlLow,
+            isIndiaLow: allIndiaLow
           };
         })
         .filter(Boolean);
@@ -1176,7 +1311,7 @@
 
       setStatus('Preview ready');
       log(`Processed ${processed.length} books.`);
-      log(`Matched stock rows: ${matchedStock}. SOSRC matches by BAV Code: ${sosrcCount}.`);
+      log(`Matched stock rows: ${matchedStock}. SOSRC matches by short code: ${sosrcCount}.`);
       els.downloadBtn.disabled = false;
     }
 
