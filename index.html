@@ -65,7 +65,7 @@
 
     .upload-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
     }
 
@@ -102,7 +102,7 @@
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 12px;
       margin-top: 14px;
     }
@@ -333,13 +333,17 @@
       background: var(--excel-dl);
     }
 
+    .data-row td.qty-cell {
+      background: #ffffff !important;
+    }
+
     .qty-cell input {
       width: 54px;
       padding: 7px 8px;
       border: 1px solid #9ca3af;
       border-radius: 4px;
       font: inherit;
-      background: white;
+      background: #ffffff;
     }
 
     .title-cell,
@@ -397,12 +401,13 @@
     }
 
     @media (max-width: 1100px) {
-      .upload-grid { grid-template-columns: 1fr; }
+      .upload-grid { grid-template-columns: 1fr 1fr; }
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .table-wrap { height: 68vh; }
     }
 
     @media (max-width: 700px) {
+      .upload-grid,
       .toolbar-filters {
         grid-template-columns: 1fr;
       }
@@ -433,6 +438,10 @@
             <label for="sosrcFile">SOSRC File</label>
             <input id="sosrcFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           </div>
+          <div class="upload-box">
+            <label for="previousIndentFile">Previous Indent</label>
+            <input id="previousIndentFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+          </div>
         </div>
 
         <div class="actions">
@@ -445,6 +454,7 @@
           <div class="stat"><span id="matchCount" class="k">0</span><span class="l">Shown matched stock</span></div>
           <div class="stat"><span id="sosrcCount" class="k">0</span><span class="l">Shown SOSRC items</span></div>
           <div class="stat"><span id="langCount" class="k">0</span><span class="l">Shown languages</span></div>
+          <div class="stat"><span id="exceptionCount" class="k">0</span><span class="l">Exception items</span></div>
         </div>
 
         <div id="log" class="log">Ready.</div>
@@ -545,13 +555,15 @@
       workbookBlob: null,
       matchedStock: 0,
       sosrcCount: 0,
-      languagesShown: 0
+      languagesShown: 0,
+      exceptionRows: []
     };
 
     const els = {
       masterFile: document.getElementById('masterFile'),
       stockFile: document.getElementById('stockFile'),
       sosrcFile: document.getElementById('sosrcFile'),
+      previousIndentFile: document.getElementById('previousIndentFile'),
       buildBtn: document.getElementById('buildBtn'),
       downloadBtn: document.getElementById('downloadBtn'),
       resetBtn: document.getElementById('resetBtn'),
@@ -567,7 +579,8 @@
       booksCount: document.getElementById('booksCount'),
       matchCount: document.getElementById('matchCount'),
       sosrcCount: document.getElementById('sosrcCount'),
-      langCount: document.getElementById('langCount')
+      langCount: document.getElementById('langCount'),
+      exceptionCount: document.getElementById('exceptionCount')
     };
 
     function log(message, type = 'info') {
@@ -716,7 +729,7 @@
         ['Language'],
         ['MMS Code', 'MMS CODE'],
         ['Book Name', 'TITLE', 'Title']
-      ]);
+      ], 20);
 
       if (headerIndex === -1) {
         throw new Error('Could not detect header row in Books Master file.');
@@ -730,10 +743,25 @@
       const headerIndex = detectHeaderRow(matrix, [
         ['Short Code', 'SHORT CODE', 'Code', 'CODE'],
         ['Book Name', 'BOOK NAME', 'Title', 'TITLE']
-      ]);
+      ], 20);
 
       if (headerIndex === -1) {
         throw new Error('Could not detect header row in SOSRC file.');
+      }
+
+      return rowsFromHeaderIndex(matrix, headerIndex);
+    }
+
+    function getPreviousIndentRows(sheet) {
+      const matrix = getSheetMatrix(sheet);
+      const headerIndex = detectHeaderRow(matrix, [
+        ['CODE', 'Code'],
+        ['MMS CODE', 'MMS Code', 'MMSCODE'],
+        ['TITLE', 'Title']
+      ], 30);
+
+      if (headerIndex === -1) {
+        throw new Error('Could not detect header row in Previous Indent Books sheet.');
       }
 
       return rowsFromHeaderIndex(matrix, headerIndex);
@@ -896,6 +924,7 @@
       els.matchCount.textContent = String(shownMatchedStock);
       els.sosrcCount.textContent = String(shownSosrc);
       els.langCount.textContent = String(shownLanguages);
+      els.exceptionCount.textContent = String(state.exceptionRows.length);
     }
 
     function renderTable() {
@@ -1001,10 +1030,22 @@
       });
     }
 
+    function addCellStyle(cell, fillArgb, bold = false, align = 'center', wrap = true) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillArgb } };
+      cell.font = { name: 'Arial', size: 10, bold, color: { argb: 'FF111111' } };
+      cell.alignment = { vertical: 'middle', horizontal: align, wrapText: wrap };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF111111' } },
+        left: { style: 'thin', color: { argb: 'FF111111' } },
+        bottom: { style: 'thin', color: { argb: 'FF111111' } },
+        right: { style: 'thin', color: { argb: 'FF111111' } }
+      };
+    }
+
     async function buildWorkbookBlob() {
       const workbook = new ExcelJS.Workbook();
-      const ws = workbook.addWorksheet('BOOKS');
 
+      const ws = workbook.addWorksheet('BOOKS');
       ws.columns = [
         { key: 'code', width: 16.5 },
         { key: 'mmsCode', width: 9.6 },
@@ -1021,52 +1062,16 @@
       ws.mergeCells('E1:I1');
       ws.getCell('A1').value = 'Centre';
       ws.getCell('E1').value = 'Date';
-
-      ['A1', 'E1'].forEach(addr => {
-        const cell = ws.getCell(addr);
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD8FFFF' } };
-        cell.font = { name: 'Arial', size: 10, bold: false, color: { argb: 'FF111111' } };
-        cell.alignment = { vertical: 'middle', horizontal: addr === 'A1' ? 'left' : 'center' };
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FF111111' } },
-          left: { style: 'thin', color: { argb: 'FF111111' } },
-          bottom: { style: 'thin', color: { argb: 'FF111111' } },
-          right: { style: 'thin', color: { argb: 'FF111111' } }
-        };
-      });
-
+      addCellStyle(ws.getCell('A1'), 'FFD8FFFF', false, 'left');
+      addCellStyle(ws.getCell('E1'), 'FFD8FFFF', false, 'center');
       ws.getRow(1).height = 24;
 
-      const headers = [
-        'CODE',
-        'MMS CODE',
-        'TITLE',
-        'Qty.',
-        'SALE PRICE',
-        'COST PRICE',
-        'Sale Amount',
-        'Cost Amount',
-        'Remarks'
-      ];
-
+      const headers = ['CODE', 'MMS CODE', 'TITLE', 'Qty.', 'SALE PRICE', 'COST PRICE', 'Sale Amount', 'Cost Amount', 'Remarks'];
       headers.forEach((header, index) => {
         const cell = ws.getCell(2, index + 1);
         cell.value = header;
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD8FFFF' } };
-        cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF111111' } };
-        cell.alignment = {
-          vertical: 'middle',
-          horizontal: index === 2 ? 'left' : 'center',
-          wrapText: true
-        };
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FF111111' } },
-          left: { style: 'thin', color: { argb: 'FF111111' } },
-          bottom: { style: 'thin', color: { argb: 'FF111111' } },
-          right: { style: 'thin', color: { argb: 'FF111111' } }
-        };
+        addCellStyle(cell, 'FFD8FFFF', true, index === 2 ? 'left' : 'center');
       });
-
       ws.getRow(2).height = 40;
 
       let rowNum = 3;
@@ -1077,15 +1082,8 @@
           for (let col = 1; col <= 9; col++) {
             const cell = ws.getCell(rowNum, col);
             cell.value = col === 3 ? item.label : '';
+            addCellStyle(cell, 'FF00008B', true, col === 3 ? 'left' : 'center');
             cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00008B' } };
-            cell.alignment = { vertical: 'middle', horizontal: col === 3 ? 'left' : 'center' };
-            cell.border = {
-              top: { style: 'thin', color: { argb: 'FF111111' } },
-              left: { style: 'thin', color: { argb: 'FF111111' } },
-              bottom: { style: 'thin', color: { argb: 'FF111111' } },
-              right: { style: 'thin', color: { argb: 'FF111111' } }
-            };
           }
           ws.getRow(rowNum).height = 20;
           rowNum += 1;
@@ -1108,15 +1106,11 @@
         else if (item.isDlLow) fillArgb = 'FFBFC3C9';
 
         row.eachCell({ includeEmpty: true }, cell => {
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillArgb } };
-          cell.border = {
-            top: { style: 'thin', color: { argb: 'FF111111' } },
-            left: { style: 'thin', color: { argb: 'FF111111' } },
-            bottom: { style: 'thin', color: { argb: 'FF111111' } },
-            right: { style: 'thin', color: { argb: 'FF111111' } }
-          };
-          cell.alignment = { vertical: 'top', wrapText: true };
-          cell.font = { name: 'Arial', size: 10, bold: false, color: { argb: 'FF111111' } };
+          const isQtyCell = cell.col === 4;
+          addCellStyle(cell, isQtyCell ? 'FFFFFFFF' : fillArgb, false, cell.col === 3 ? 'left' : 'center', true);
+          if (cell.col === 3 || cell.col === 9) {
+            cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+          }
         });
 
         [5, 6, 7, 8].forEach(i => row.getCell(i).numFmt = '#,##0.00');
@@ -1128,6 +1122,60 @@
 
       ws.views = [{ state: 'frozen', ySplit: 2 }];
 
+      const ex = workbook.addWorksheet('Exception List');
+      ex.columns = [
+        { key: 'code', width: 16.5 },
+        { key: 'mmsCode', width: 9.6 },
+        { key: 'title', width: 46.5 },
+        { key: 'qty', width: 9.6 },
+        { key: 'salePrice', width: 10.7 },
+        { key: 'costPrice', width: 10.3 },
+        { key: 'saleAmount', width: 11.8 },
+        { key: 'costAmount', width: 13.5 },
+        { key: 'remarks', width: 20 }
+      ];
+
+      const exHeaders = ['CODE', 'MMS CODE', 'TITLE', 'Qty.', 'SALE PRICE', 'COST PRICE', 'Sale Amount', 'Cost Amount', 'Remarks'];
+      exHeaders.forEach((header, index) => {
+        const cell = ex.getCell(1, index + 1);
+        cell.value = header;
+        addCellStyle(cell, 'FFD8FFFF', true, index === 2 ? 'left' : 'center');
+      });
+
+      let exRowNum = 2;
+      for (const item of state.exceptionRows) {
+        const row = ex.getRow(exRowNum);
+        row.getCell(1).value = item.code;
+        row.getCell(2).value = item.mmsCode;
+        row.getCell(3).value = item.title;
+        row.getCell(4).value = Number(item.qty) || null;
+        row.getCell(5).value = item.salePrice;
+        row.getCell(6).value = item.costPrice;
+        row.getCell(7).value = { formula: `D${exRowNum}*E${exRowNum}` };
+        row.getCell(8).value = { formula: `D${exRowNum}*F${exRowNum}` };
+        row.getCell(9).value = item.remarks || '';
+
+        let fillArgb = 'FFD8FFFF';
+        if (item.isSosrc) fillArgb = 'FFF8D7DA';
+        else if (item.isDlLow) fillArgb = 'FFBFC3C9';
+
+        row.eachCell({ includeEmpty: true }, cell => {
+          const isQtyCell = cell.col === 4;
+          addCellStyle(cell, isQtyCell ? 'FFFFFFFF' : fillArgb, false, cell.col === 3 ? 'left' : 'center', true);
+          if (cell.col === 3 || cell.col === 9) {
+            cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+          }
+        });
+
+        [5, 6, 7, 8].forEach(i => row.getCell(i).numFmt = '#,##0.00');
+        row.getCell(4).numFmt = '0';
+        row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };
+
+        exRowNum += 1;
+      }
+
+      ex.views = [{ state: 'frozen', ySplit: 1 }];
+
       const buffer = await workbook.xlsx.writeBuffer();
       return new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -1138,18 +1186,20 @@
       const masterFile = els.masterFile.files[0];
       const stockFile = els.stockFile.files[0];
       const sosrcFile = els.sosrcFile.files[0];
+      const previousIndentFile = els.previousIndentFile.files[0];
 
-      if (!masterFile || !stockFile || !sosrcFile) {
-        throw new Error('Please upload all three files first.');
+      if (!masterFile || !stockFile || !sosrcFile || !previousIndentFile) {
+        throw new Error('Please upload all four files first.');
       }
 
       setStatus('Reading files');
       log('Reading uploaded files...');
 
-      const [masterWb, stockWb, sosrcWb] = await Promise.all([
+      const [masterWb, stockWb, sosrcWb, previousIndentWb] = await Promise.all([
         readWorkbook(masterFile),
         readWorkbook(stockFile),
-        readWorkbook(sosrcFile)
+        readWorkbook(sosrcFile),
+        readWorkbook(previousIndentFile)
       ]);
 
       const masterSheet = masterWb.Sheets[masterWb.SheetNames[0]];
@@ -1160,17 +1210,32 @@
       const stockRowsRaw = getHeaderedStockRows(stockSheet);
       const sosrcRowsRaw = getSosrcRows(sosrcSheet);
 
+      const previousIndentSheetName =
+        previousIndentWb.SheetNames.find(name => normalizeKey(name) === 'BOOKS') ||
+        previousIndentWb.SheetNames.find(name => normalizeKey(name).includes('BOOK'));
+
+      if (!previousIndentSheetName) {
+        throw new Error('Could not find Books sheet in Previous Indent file.');
+      }
+
+      log(`Previous indent sheet used: ${previousIndentSheetName}`);
+      const previousIndentSheet = previousIndentWb.Sheets[previousIndentSheetName];
+      const previousIndentRowsRaw = getPreviousIndentRows(previousIndentSheet);
+
       if (!masterRowsRaw.length) throw new Error('Books Master file appears empty.');
       if (!stockRowsRaw.length) throw new Error('Stock Position file appears empty after row 3 header parsing.');
       if (!sosrcRowsRaw.length) throw new Error('SOSRC file appears empty.');
+      if (!previousIndentRowsRaw.length) throw new Error('Previous Indent file appears empty.');
 
       log(`Master rows loaded: ${masterRowsRaw.length}`);
       log(`Stock rows loaded: ${stockRowsRaw.length}`);
       log(`SOSRC rows loaded: ${sosrcRowsRaw.length}`);
+      log(`Previous indent rows loaded: ${previousIndentRowsRaw.length}`);
 
       const masterFirst = masterRowsRaw[0];
       const stockFirst = stockRowsRaw[0];
       const sosrcFirst = sosrcRowsRaw[0];
+      const previousFirst = previousIndentRowsRaw[0];
 
       const masterCols = {
         language: findColumn(masterFirst, ['Language']),
@@ -1211,6 +1276,11 @@
         throw new Error(`SOSRC file is missing expected columns: ${missingSosrc.join(', ')}`);
       }
 
+      const previousMmsCol = findColumn(previousFirst, ['MMS CODE', 'MMS Code']);
+      if (!previousMmsCol) {
+        throw new Error('Previous Indent Books sheet MMS CODE column not found.');
+      }
+
       const totalStockMap = new Map();
       const vStockMap = new Map();
 
@@ -1227,14 +1297,21 @@
       }
 
       const sosrcShortCodeSet = new Set();
-
       for (const row of sosrcRowsRaw) {
         const shortCode = normalizeCode(row[sosrcCols.shortCode]);
         if (!shortCode) continue;
         sosrcShortCodeSet.add(shortCode);
       }
 
+      const previousIndentMmsSet = new Set();
+      for (const row of previousIndentRowsRaw) {
+        const mms = normalizeMms(row[previousMmsCol]);
+        if (!mms) continue;
+        previousIndentMmsSet.add(mms);
+      }
+
       log(`SOSRC short codes available: ${sosrcShortCodeSet.size}`);
+      log(`Previous indent MMS codes available: ${previousIndentMmsSet.size}`);
 
       let matchedStock = 0;
       let sosrcCount = 0;
@@ -1270,7 +1347,6 @@
             } else {
               allIndiaLow = totalStock < 30;
             }
-
             dlLow = vStock < 30;
           }
 
@@ -1280,7 +1356,6 @@
           } else if (dlLow) {
             remarks.push('DL low stock');
           }
-
           if (isSosrc) remarks.push('SOSRC');
 
           return {
@@ -1302,6 +1377,8 @@
         .filter(Boolean);
 
       state.rows = processed;
+      state.exceptionRows = processed.filter(row => row.mmsCode && !previousIndentMmsSet.has(row.mmsCode));
+
       state.filteredRows = [...processed];
       populateLanguageFilter(processed);
       applyFilters();
@@ -1312,6 +1389,7 @@
       setStatus('Preview ready');
       log(`Processed ${processed.length} books.`);
       log(`Matched stock rows: ${matchedStock}. SOSRC matches by short code: ${sosrcCount}.`);
+      log(`Exception rows found: ${state.exceptionRows.length}.`);
       els.downloadBtn.disabled = false;
     }
 
@@ -1338,7 +1416,7 @@
         state.workbookBlob = await buildWorkbookBlob();
         saveAs(state.workbookBlob, 'MMS_Indent_Output.xlsx');
         setStatus('Download complete');
-        log('Excel file downloaded.');
+        log('Excel file downloaded with BOOKS and Exception List sheets.');
       } catch (error) {
         console.error(error);
         setStatus('Error');
@@ -1364,6 +1442,7 @@
       els.masterFile.value = '';
       els.stockFile.value = '';
       els.sosrcFile.value = '';
+      els.previousIndentFile.value = '';
       els.searchInput.value = '';
       els.languageFilter.innerHTML = '<option value="ALL">All languages</option>';
       els.remarksFilter.value = 'ALL';
@@ -1376,11 +1455,13 @@
       state.matchedStock = 0;
       state.sosrcCount = 0;
       state.languagesShown = 0;
+      state.exceptionRows = [];
 
       els.booksCount.textContent = '0';
       els.matchCount.textContent = '0';
       els.sosrcCount.textContent = '0';
       els.langCount.textContent = '0';
+      els.exceptionCount.textContent = '0';
       els.log.textContent = 'Ready.';
       els.previewTable.style.display = 'none';
       els.previewTable.innerHTML = '';
