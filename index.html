@@ -541,7 +541,7 @@
     const validLangs = [
       'ENGLISH', 'HINDI', 'PUNJABI', 'ASSAMESE', 'BENGALI', 'GUJARATI',
       'KANNADA', 'KONKANI', 'MALAYALAM', 'MARATHI', 'NEPALI', 'ODIA',
-      'SINDHI', 'TAMIL', 'TELUGU', 'URDU'
+      'SINDHI', 'SWAHILI', 'TAMIL', 'TELUGU', 'URDU'
     ];
 
     const langOrder = ['ENGLISH', 'HINDI', 'PUNJABI'].concat(
@@ -622,6 +622,12 @@
         .trim();
     }
 
+    function normalizeLanguage(value) {
+      let language = normalizeText(value).toUpperCase();
+      if (language === 'TELEGU') language = 'TELUGU';
+      return language;
+    }
+
     function normalizeMms(value) {
       return String(value ?? '')
         .replace(/^\uFEFF/, '')
@@ -636,6 +642,11 @@
         .replace(/\s+/g, ' ')
         .trim()
         .toUpperCase();
+    }
+
+    function toShortCode(value) {
+      const code = normalizeCode(value);
+      return code ? code.slice(0, 8) : '';
     }
 
     function normalizeNumber(value) {
@@ -1143,7 +1154,21 @@
       });
 
       let exRowNum = 2;
-      for (const item of state.exceptionRows) {
+      const groupedExceptionRows = buildGroupedRows(sortRows(state.exceptionRows));
+
+      for (const item of groupedExceptionRows) {
+        if (item.type === 'group') {
+          for (let col = 1; col <= 9; col++) {
+            const cell = ex.getCell(exRowNum, col);
+            cell.value = col === 3 ? item.label : '';
+            addCellStyle(cell, 'FF00008B', true, col === 3 ? 'left' : 'center');
+            cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+          }
+          ex.getRow(exRowNum).height = 20;
+          exRowNum += 1;
+          continue;
+        }
+
         const row = ex.getRow(exRowNum);
         row.getCell(1).value = item.code;
         row.getCell(2).value = item.mmsCode;
@@ -1276,9 +1301,9 @@
         throw new Error(`SOSRC file is missing expected columns: ${missingSosrc.join(', ')}`);
       }
 
-      const previousMmsCol = findColumn(previousFirst, ['MMS CODE', 'MMS Code']);
-      if (!previousMmsCol) {
-        throw new Error('Previous Indent Books sheet MMS CODE column not found.');
+      const previousCodeCol = findColumn(previousFirst, ['CODE', 'Code']);
+      if (!previousCodeCol) {
+        throw new Error('Previous Indent Books sheet CODE column not found.');
       }
 
       const totalStockMap = new Map();
@@ -1303,29 +1328,32 @@
         sosrcShortCodeSet.add(shortCode);
       }
 
-      const previousIndentMmsSet = new Set();
+      const previousIndentShortCodeSet = new Set();
       for (const row of previousIndentRowsRaw) {
-        const mms = normalizeMms(row[previousMmsCol]);
-        if (!mms) continue;
-        previousIndentMmsSet.add(mms);
+        const prevFullCode = row[previousCodeCol];
+        const prevShortCode = toShortCode(prevFullCode);
+        if (!prevShortCode) continue;
+        previousIndentShortCodeSet.add(prevShortCode);
       }
 
       log(`SOSRC short codes available: ${sosrcShortCodeSet.size}`);
-      log(`Previous indent MMS codes available: ${previousIndentMmsSet.size}`);
+      log(`Previous indent short codes available: ${previousIndentShortCodeSet.size}`);
 
       let matchedStock = 0;
       let sosrcCount = 0;
 
       const processed = masterRowsRaw
         .map((row, idx) => {
-          const language = normalizeText(row[masterCols.language]).toUpperCase();
+          const language = normalizeLanguage(row[masterCols.language]);
           if (!validLangs.includes(language)) return null;
 
           const langCat = normalizeText(row[masterCols.langCat]).toUpperCase();
           const mmsCode = normalizeMms(row[masterCols.mms]);
           const title = normalizeText(row[masterCols.bookName]);
           const bavCode = normalizeText(row[masterCols.bavCode]);
-          const shortCodeKey = normalizeCode(row[masterCols.shortCode]);
+          const bavCodeKey = normalizeCode(row[masterCols.bavCode]);
+          const shortCodeFromFile = normalizeCode(row[masterCols.shortCode]);
+          const shortCodeKey = shortCodeFromFile || toShortCode(bavCodeKey);
           const salePrice = normalizeNumber(row[masterCols.salePrice]);
           const costPrice = normalizeNumber(row[masterCols.costPrice]);
 
@@ -1362,6 +1390,7 @@
             id: `${mmsCode || 'row'}-${idx}`,
             language,
             code: bavCode,
+            shortCode: shortCodeKey,
             mmsCode,
             title,
             qty: 0,
@@ -1377,7 +1406,10 @@
         .filter(Boolean);
 
       state.rows = processed;
-      state.exceptionRows = processed.filter(row => row.mmsCode && !previousIndentMmsSet.has(row.mmsCode));
+
+      state.exceptionRows = processed.filter(row =>
+        row.shortCode && !previousIndentShortCodeSet.has(row.shortCode)
+      );
 
       state.filteredRows = [...processed];
       populateLanguageFilter(processed);
@@ -1389,7 +1421,7 @@
       setStatus('Preview ready');
       log(`Processed ${processed.length} books.`);
       log(`Matched stock rows: ${matchedStock}. SOSRC matches by short code: ${sosrcCount}.`);
-      log(`Exception rows found: ${state.exceptionRows.length}.`);
+      log(`Exception rows found by short code: ${state.exceptionRows.length}.`);
       els.downloadBtn.disabled = false;
     }
 
