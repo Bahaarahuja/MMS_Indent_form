@@ -239,7 +239,7 @@
 
     table {
       width: 100%;
-      min-width: 1120px;
+      min-width: 1220px;
       border-collapse: separate;
       border-spacing: 0;
       table-layout: fixed;
@@ -248,12 +248,12 @@
     col.code-col { width: 115px; }
     col.mms-col { width: 67px; }
     col.title-col { width: 327px; }
+    col.remarks-col { width: 140px; }
     col.qty-col { width: 67px; }
     col.sale-col { width: 75px; }
     col.cost-col { width: 72px; }
     col.saleamt-col { width: 83px; }
     col.costamt-col { width: 95px; }
-    col.remarks-col { width: 140px; }
 
     thead th {
       position: sticky;
@@ -446,6 +446,8 @@
 
         <div class="actions">
           <button id="buildBtn" class="btn-primary">Build preview</button>
+          <button id="downloadMainBtn" class="btn-primary" disabled>Download Main Excel</button>
+          <button id="downloadExceptionBtn" class="btn-primary" disabled>Download Exception Excel</button>
           <button id="resetBtn" class="btn-secondary">Reset</button>
         </div>
 
@@ -469,7 +471,6 @@
           </div>
           <div class="toolbar-right">
             <div class="status"><span class="dot"></span><span id="statusText">Waiting for files</span></div>
-            <button id="downloadBtn" class="btn-primary" disabled>Download Excel</button>
           </div>
         </div>
 
@@ -552,7 +553,8 @@
       rows: [],
       filteredRows: [],
       groupedRows: [],
-      workbookBlob: null,
+      mainWorkbookBlob: null,
+      exceptionWorkbookBlob: null,
       matchedStock: 0,
       sosrcCount: 0,
       languagesShown: 0,
@@ -565,7 +567,8 @@
       sosrcFile: document.getElementById('sosrcFile'),
       previousIndentFile: document.getElementById('previousIndentFile'),
       buildBtn: document.getElementById('buildBtn'),
-      downloadBtn: document.getElementById('downloadBtn'),
+      downloadMainBtn: document.getElementById('downloadMainBtn'),
+      downloadExceptionBtn: document.getElementById('downloadExceptionBtn'),
       resetBtn: document.getElementById('resetBtn'),
       clearFiltersBtn: document.getElementById('clearFiltersBtn'),
       searchInput: document.getElementById('searchInput'),
@@ -956,12 +959,12 @@
           <col class="code-col">
           <col class="mms-col">
           <col class="title-col">
+          <col class="remarks-col">
           <col class="qty-col">
           <col class="sale-col">
           <col class="cost-col">
           <col class="saleamt-col">
           <col class="costamt-col">
-          <col class="remarks-col">
         </colgroup>
         <thead>
           <tr>
@@ -972,12 +975,12 @@
             <th>CODE</th>
             <th>MMS CODE</th>
             <th style="text-align:left;">TITLE</th>
+            <th>Remarks</th>
             <th>Qty.</th>
             <th>SALE PRICE</th>
             <th>COST<br>PRICE</th>
             <th>Sale Amount</th>
             <th>Cost Amount</th>
-            <th>Remarks</th>
           </tr>
         </thead>
         <tbody>
@@ -1011,12 +1014,12 @@
                 <td class="code-cell">${escapeHtml(row.code)}</td>
                 <td class="mms-cell">${escapeHtml(row.mmsCode)}</td>
                 <td class="title-cell">${escapeHtml(row.title)}</td>
+                <td><div class="remarks-text">${escapeHtml(formatRemarkText(row.remarks))}</div></td>
                 <td class="qty-cell"><input type="number" min="0" step="1" value="${Number(row.qty) || ''}" data-qty-input="${escapeHtml(row.id)}"></td>
                 <td>${currency(row.salePrice)}</td>
                 <td>${currency(row.costPrice)}</td>
                 <td data-sale-amount="${escapeHtml(row.id)}">${currency(saleAmount)}</td>
                 <td data-cost-amount="${escapeHtml(row.id)}">${currency(costAmount)}</td>
-                <td><div class="remarks-text">${escapeHtml(formatRemarkText(row.remarks))}</div></td>
               </tr>
             `;
           }).join('')}
@@ -1053,7 +1056,21 @@
       };
     }
 
-    async function buildWorkbookBlob() {
+    function styleDataRow(row, fillArgb) {
+      row.eachCell({ includeEmpty: true }, cell => {
+        const isQtyCell = cell.col === 5;
+        addCellStyle(cell, isQtyCell ? 'FFFFFFFF' : fillArgb, false, cell.col === 3 || cell.col === 4 ? 'left' : 'center', true);
+        if (cell.col === 3 || cell.col === 4) {
+          cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+        }
+      });
+
+      [6, 7, 8, 9].forEach(i => row.getCell(i).numFmt = '#,##0.00');
+      row.getCell(5).numFmt = '0';
+      row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
+    }
+
+    async function buildMainWorkbookBlob() {
       const workbook = new ExcelJS.Workbook();
 
       const ws = workbook.addWorksheet('BOOKS');
@@ -1061,12 +1078,12 @@
         { key: 'code', width: 16.5 },
         { key: 'mmsCode', width: 9.6 },
         { key: 'title', width: 46.5 },
+        { key: 'remarks', width: 20 },
         { key: 'qty', width: 9.6 },
         { key: 'salePrice', width: 10.7 },
         { key: 'costPrice', width: 10.3 },
         { key: 'saleAmount', width: 11.8 },
-        { key: 'costAmount', width: 13.5 },
-        { key: 'remarks', width: 20 }
+        { key: 'costAmount', width: 13.5 }
       ];
 
       ws.mergeCells('A1:D1');
@@ -1077,11 +1094,11 @@
       addCellStyle(ws.getCell('E1'), 'FFD8FFFF', false, 'center');
       ws.getRow(1).height = 24;
 
-      const headers = ['CODE', 'MMS CODE', 'TITLE', 'Qty.', 'SALE PRICE', 'COST PRICE', 'Sale Amount', 'Cost Amount', 'Remarks'];
+      const headers = ['CODE', 'MMS CODE', 'TITLE', 'Remarks', 'Qty.', 'SALE PRICE', 'COST PRICE', 'Sale Amount', 'Cost Amount'];
       headers.forEach((header, index) => {
         const cell = ws.getCell(2, index + 1);
         cell.value = header;
-        addCellStyle(cell, 'FFD8FFFF', true, index === 2 ? 'left' : 'center');
+        addCellStyle(cell, 'FFD8FFFF', true, index === 2 || index === 3 ? 'left' : 'center');
       });
       ws.getRow(2).height = 40;
 
@@ -1105,52 +1122,50 @@
         row.getCell(1).value = item.code;
         row.getCell(2).value = item.mmsCode;
         row.getCell(3).value = item.title;
-        row.getCell(4).value = Number(item.qty) || null;
-        row.getCell(5).value = item.salePrice;
-        row.getCell(6).value = item.costPrice;
-        row.getCell(7).value = { formula: `D${rowNum}*E${rowNum}` };
-        row.getCell(8).value = { formula: `D${rowNum}*F${rowNum}` };
-        row.getCell(9).value = item.remarks || '';
+        row.getCell(4).value = item.remarks || '';
+        row.getCell(5).value = Number(item.qty) || null;
+        row.getCell(6).value = item.salePrice;
+        row.getCell(7).value = item.costPrice;
+        row.getCell(8).value = { formula: `E${rowNum}*F${rowNum}` };
+        row.getCell(9).value = { formula: `E${rowNum}*G${rowNum}` };
 
         let fillArgb = 'FFD8FFFF';
         if (item.isSosrc) fillArgb = 'FFF8D7DA';
         else if (item.isDlLow) fillArgb = 'FFBFC3C9';
 
-        row.eachCell({ includeEmpty: true }, cell => {
-          const isQtyCell = cell.col === 4;
-          addCellStyle(cell, isQtyCell ? 'FFFFFFFF' : fillArgb, false, cell.col === 3 ? 'left' : 'center', true);
-          if (cell.col === 3 || cell.col === 9) {
-            cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
-          }
-        });
-
-        [5, 6, 7, 8].forEach(i => row.getCell(i).numFmt = '#,##0.00');
-        row.getCell(4).numFmt = '0';
-        row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };
-
+        styleDataRow(row, fillArgb);
         rowNum += 1;
       }
 
       ws.views = [{ state: 'frozen', ySplit: 2 }];
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      return new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+    }
+
+    async function buildExceptionWorkbookBlob() {
+      const workbook = new ExcelJS.Workbook();
 
       const ex = workbook.addWorksheet('Exception List');
       ex.columns = [
         { key: 'code', width: 16.5 },
         { key: 'mmsCode', width: 9.6 },
         { key: 'title', width: 46.5 },
+        { key: 'remarks', width: 20 },
         { key: 'qty', width: 9.6 },
         { key: 'salePrice', width: 10.7 },
         { key: 'costPrice', width: 10.3 },
         { key: 'saleAmount', width: 11.8 },
-        { key: 'costAmount', width: 13.5 },
-        { key: 'remarks', width: 20 }
+        { key: 'costAmount', width: 13.5 }
       ];
 
-      const exHeaders = ['CODE', 'MMS CODE', 'TITLE', 'Qty.', 'SALE PRICE', 'COST PRICE', 'Sale Amount', 'Cost Amount', 'Remarks'];
+      const exHeaders = ['CODE', 'MMS CODE', 'TITLE', 'Remarks', 'Qty.', 'SALE PRICE', 'COST PRICE', 'Sale Amount', 'Cost Amount'];
       exHeaders.forEach((header, index) => {
         const cell = ex.getCell(1, index + 1);
         cell.value = header;
-        addCellStyle(cell, 'FFD8FFFF', true, index === 2 ? 'left' : 'center');
+        addCellStyle(cell, 'FFD8FFFF', true, index === 2 || index === 3 ? 'left' : 'center');
       });
 
       let exRowNum = 2;
@@ -1173,29 +1188,18 @@
         row.getCell(1).value = item.code;
         row.getCell(2).value = item.mmsCode;
         row.getCell(3).value = item.title;
-        row.getCell(4).value = Number(item.qty) || null;
-        row.getCell(5).value = item.salePrice;
-        row.getCell(6).value = item.costPrice;
-        row.getCell(7).value = { formula: `D${exRowNum}*E${exRowNum}` };
-        row.getCell(8).value = { formula: `D${exRowNum}*F${exRowNum}` };
-        row.getCell(9).value = item.remarks || '';
+        row.getCell(4).value = item.remarks || '';
+        row.getCell(5).value = Number(item.qty) || null;
+        row.getCell(6).value = item.salePrice;
+        row.getCell(7).value = item.costPrice;
+        row.getCell(8).value = { formula: `E${exRowNum}*F${exRowNum}` };
+        row.getCell(9).value = { formula: `E${exRowNum}*G${exRowNum}` };
 
         let fillArgb = 'FFD8FFFF';
         if (item.isSosrc) fillArgb = 'FFF8D7DA';
         else if (item.isDlLow) fillArgb = 'FFBFC3C9';
 
-        row.eachCell({ includeEmpty: true }, cell => {
-          const isQtyCell = cell.col === 4;
-          addCellStyle(cell, isQtyCell ? 'FFFFFFFF' : fillArgb, false, cell.col === 3 ? 'left' : 'center', true);
-          if (cell.col === 3 || cell.col === 9) {
-            cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
-          }
-        });
-
-        [5, 6, 7, 8].forEach(i => row.getCell(i).numFmt = '#,##0.00');
-        row.getCell(4).numFmt = '0';
-        row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };
-
+        styleDataRow(row, fillArgb);
         exRowNum += 1;
       }
 
@@ -1406,7 +1410,6 @@
         .filter(Boolean);
 
       state.rows = processed;
-
       state.exceptionRows = processed.filter(row =>
         row.shortCode && !previousIndentShortCodeSet.has(row.shortCode)
       );
@@ -1416,19 +1419,23 @@
       applyFilters();
       state.matchedStock = matchedStock;
       state.sosrcCount = sosrcCount;
-      state.workbookBlob = await buildWorkbookBlob();
+
+      state.mainWorkbookBlob = await buildMainWorkbookBlob();
+      state.exceptionWorkbookBlob = await buildExceptionWorkbookBlob();
 
       setStatus('Preview ready');
       log(`Processed ${processed.length} books.`);
       log(`Matched stock rows: ${matchedStock}. SOSRC matches by short code: ${sosrcCount}.`);
       log(`Exception rows found by short code: ${state.exceptionRows.length}.`);
-      els.downloadBtn.disabled = false;
+      els.downloadMainBtn.disabled = false;
+      els.downloadExceptionBtn.disabled = false;
     }
 
     els.buildBtn.addEventListener('click', async () => {
       try {
         els.buildBtn.disabled = true;
-        els.downloadBtn.disabled = true;
+        els.downloadMainBtn.disabled = true;
+        els.downloadExceptionBtn.disabled = true;
         setStatus('Processing');
         log('Starting build...');
         await processFiles();
@@ -1442,18 +1449,33 @@
       }
     });
 
-    els.downloadBtn.addEventListener('click', async () => {
+    els.downloadMainBtn.addEventListener('click', async () => {
       try {
-        setStatus('Preparing download');
-        state.workbookBlob = await buildWorkbookBlob();
-        saveAs(state.workbookBlob, 'MMS_Indent_Output.xlsx');
-        setStatus('Download complete');
-        log('Excel file downloaded with BOOKS and Exception List sheets.');
+        setStatus('Preparing main file');
+        state.mainWorkbookBlob = await buildMainWorkbookBlob();
+        saveAs(state.mainWorkbookBlob, 'MMS_Indent_Output.xlsx');
+        setStatus('Main file downloaded');
+        log('Main Excel file downloaded.');
       } catch (error) {
         console.error(error);
         setStatus('Error');
-        log(error.message || 'Could not generate Excel download.', 'error');
-        alert(error.message || 'Could not generate Excel download.');
+        log(error.message || 'Could not generate main Excel download.', 'error');
+        alert(error.message || 'Could not generate main Excel download.');
+      }
+    });
+
+    els.downloadExceptionBtn.addEventListener('click', async () => {
+      try {
+        setStatus('Preparing exception file');
+        state.exceptionWorkbookBlob = await buildExceptionWorkbookBlob();
+        saveAs(state.exceptionWorkbookBlob, 'MMS_Exception_List.xlsx');
+        setStatus('Exception file downloaded');
+        log('Exception Excel file downloaded.');
+      } catch (error) {
+        console.error(error);
+        setStatus('Error');
+        log(error.message || 'Could not generate exception Excel download.', 'error');
+        alert(error.message || 'Could not generate exception Excel download.');
       }
     });
 
@@ -1483,7 +1505,8 @@
       state.rows = [];
       state.filteredRows = [];
       state.groupedRows = [];
-      state.workbookBlob = null;
+      state.mainWorkbookBlob = null;
+      state.exceptionWorkbookBlob = null;
       state.matchedStock = 0;
       state.sosrcCount = 0;
       state.languagesShown = 0;
@@ -1498,7 +1521,8 @@
       els.previewTable.style.display = 'none';
       els.previewTable.innerHTML = '';
       els.emptyState.style.display = 'grid';
-      els.downloadBtn.disabled = true;
+      els.downloadMainBtn.disabled = true;
+      els.downloadExceptionBtn.disabled = true;
       setStatus('Waiting for files');
     });
   </script>
