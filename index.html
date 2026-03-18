@@ -27,7 +27,7 @@
       --excel-group: #00008b;
       --excel-group-text: #ffffff;
       --excel-sosrc: #f8d7da;
-      --excel-dl: #bfc3c9;
+      --excel-gray: #bfc3c9;
       --excel-body: #d8ffff;
       --excel-border: #111111;
     }
@@ -329,8 +329,8 @@
       background: var(--excel-sosrc);
     }
 
-    .data-row.dl-row td {
-      background: var(--excel-dl);
+    .data-row.gray-row td {
+      background: var(--excel-gray);
     }
 
     .data-row td.qty-cell {
@@ -492,6 +492,7 @@
             <select id="remarksFilter">
               <option value="ALL">All remarks</option>
               <option value="SOSRC">SOSRC</option>
+              <option value="Out of Stock">Out of Stock</option>
               <option value="All India low stock">All India low stock</option>
               <option value="DL low stock">DL low stock</option>
               <option value="NO_REMARKS">No remarks</option>
@@ -545,9 +546,7 @@
       'SINDHI', 'SWAHILI', 'TAMIL', 'TELUGU', 'URDU'
     ];
 
-    const langOrder = ['ENGLISH', 'HINDI', 'PUNJABI'].concat(
-      validLangs.filter(l => !['ENGLISH', 'HINDI', 'PUNJABI'].includes(l)).sort()
-    );
+    const priorityLangs = ['ENGLISH', 'HINDI', 'PUNJABI'];
 
     const state = {
       rows: [],
@@ -629,6 +628,13 @@
       let language = normalizeText(value).toUpperCase();
       if (language === 'TELEGU') language = 'TELUGU';
       return language;
+    }
+
+    function getLanguageRank(language) {
+      const lang = normalizeLanguage(language);
+      const idx = priorityLangs.indexOf(lang);
+      if (idx !== -1) return idx;
+      return 999;
     }
 
     function normalizeMms(value) {
@@ -809,7 +815,19 @@
       const out = [];
       let shown = 0;
 
-      for (const lang of langOrder) {
+      for (const lang of priorityLangs) {
+        const group = rows.filter(r => r.language === lang);
+        if (!group.length) continue;
+        shown += 1;
+        out.push({ type: 'group', label: `${lang} BOOKS` });
+        out.push(...group.map(r => ({ type: 'book', ...r })));
+      }
+
+      const otherLangs = [...new Set(rows.map(r => r.language).filter(Boolean))]
+        .filter(lang => !priorityLangs.includes(lang))
+        .sort((a, b) => a.localeCompare(b));
+
+      for (const lang of otherLangs) {
         const group = rows.filter(r => r.language === lang);
         if (!group.length) continue;
         shown += 1;
@@ -833,12 +851,10 @@
     function populateLanguageFilter(rows) {
       const langs = [...new Set(rows.map(r => r.language).filter(Boolean))]
         .sort((a, b) => {
-          const ai = langOrder.indexOf(a);
-          const bi = langOrder.indexOf(b);
-          if (ai === -1 && bi === -1) return a.localeCompare(b);
-          if (ai === -1) return 1;
-          if (bi === -1) return -1;
-          return ai - bi;
+          const ai = getLanguageRank(a);
+          const bi = getLanguageRank(b);
+          if (ai !== bi) return ai - bi;
+          return a.localeCompare(b);
         });
 
       els.languageFilter.innerHTML = `
@@ -875,11 +891,10 @@
             return b.costPrice - a.costPrice;
           case 'LANG_TITLE_ASC':
           default: {
-            const ai = langOrder.indexOf(a.language);
-            const bi = langOrder.indexOf(b.language);
-            const safeAi = ai === -1 ? 999 : ai;
-            const safeBi = bi === -1 ? 999 : bi;
-            const langCmp = safeAi - safeBi;
+            const ai = getLanguageRank(a.language);
+            const bi = getLanguageRank(b.language);
+            if (ai !== bi) return ai - bi;
+            const langCmp = a.language.localeCompare(b.language);
             if (langCmp !== 0) return langCmp;
             return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
           }
@@ -1006,7 +1021,7 @@
             const rowClasses = [
               'data-row',
               row.isSosrc ? 'sosrc-row' : '',
-              row.isDlLow ? 'dl-row' : ''
+              row.isGrayStock ? 'gray-row' : ''
             ].filter(Boolean).join(' ');
 
             return `
@@ -1131,7 +1146,7 @@
 
         let fillArgb = 'FFD8FFFF';
         if (item.isSosrc) fillArgb = 'FFF8D7DA';
-        else if (item.isDlLow) fillArgb = 'FFBFC3C9';
+        else if (item.isGrayStock) fillArgb = 'FFBFC3C9';
 
         styleDataRow(row, fillArgb);
         rowNum += 1;
@@ -1197,7 +1212,7 @@
 
         let fillArgb = 'FFD8FFFF';
         if (item.isSosrc) fillArgb = 'FFF8D7DA';
-        else if (item.isDlLow) fillArgb = 'FFBFC3C9';
+        else if (item.isGrayStock) fillArgb = 'FFBFC3C9';
 
         styleDataRow(row, fillArgb);
         exRowNum += 1;
@@ -1370,24 +1385,33 @@
           const isSosrc = sosrcShortCodeSet.has(shortCodeKey);
           if (isSosrc) sosrcCount += 1;
 
+          const isPriorityLang = priorityLangs.includes(language);
+
+          let isGrayStock = false;
           let allIndiaLow = false;
           let dlLow = false;
 
           if (hasStock) {
-            if (langCat === 'REGIONAL') {
-              allIndiaLow = totalStock < 10;
+            isGrayStock = totalStock < 10;
+
+            if (isPriorityLang) {
+              allIndiaLow = totalStock < 100;
+              dlLow = vStock < 100;
             } else {
               allIndiaLow = totalStock < 30;
+              dlLow = vStock < 30;
             }
-            dlLow = vStock < 30;
           }
 
           const remarks = [];
-          if (allIndiaLow) {
+          if (isGrayStock) {
+            remarks.push('Out of Stock');
+          } else if (allIndiaLow) {
             remarks.push('All India low stock');
           } else if (dlLow) {
             remarks.push('DL low stock');
           }
+
           if (isSosrc) remarks.push('SOSRC');
 
           return {
@@ -1403,8 +1427,9 @@
             remarks: remarks.join(', '),
             hasStock,
             isSosrc,
-            isDlLow: !allIndiaLow && dlLow,
-            isIndiaLow: allIndiaLow
+            isGrayStock,
+            isIndiaLow: !isGrayStock && allIndiaLow,
+            isDlLow: !isGrayStock && !allIndiaLow && dlLow
           };
         })
         .filter(Boolean);
