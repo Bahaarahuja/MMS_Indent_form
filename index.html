@@ -567,13 +567,13 @@
       audioRows: [],
       mainWorkbookBlob: null,
       exceptionWorkbookBlob: null,
+      previousIndentTemplateBuffer: null,
       matchedStock: 0,
       sosrcCount: 0,
       languagesShown: 0,
       exceptionRows: [],
       photoExceptionRows: [],
-      audioExceptionRows: [],
-      previousIndentExcelJsWorkbook: null
+      audioExceptionRows: []
     };
 
     const els = {
@@ -900,7 +900,6 @@
       const labels = [...groups.keys()].sort((a, b) => {
         const ai = preferredOrder.indexOf(a);
         const bi = preferredOrder.indexOf(b);
-
         if (ai !== -1 && bi !== -1) return ai - bi;
         if (ai !== -1) return -1;
         if (bi !== -1) return 1;
@@ -1401,6 +1400,10 @@
       return JSON.parse(JSON.stringify(value));
     }
 
+    function yieldToBrowser() {
+      return new Promise(resolve => setTimeout(resolve, 0));
+    }
+
     function findExcelJsWorksheetByName(workbook, preferredName, fallbackKeyword = '') {
       if (!workbook) return null;
       const preferredKey = normalizeKey(preferredName);
@@ -1409,39 +1412,105 @@
 
       if (fallbackKeyword) {
         const fallbackKey = normalizeKey(fallbackKeyword);
-        const contains = workbook.worksheets.find(ws => normalizeKey(ws.name).includes(fallbackKey));
-        if (contains) return contains;
+        return workbook.worksheets.find(ws => normalizeKey(ws.name).includes(fallbackKey)) || null;
       }
 
       return null;
     }
 
-    function copyWorksheetIntoWorkbook(sourceWorksheet, targetWorkbook, targetName) {
+    function columnLettersToNumber(letters) {
+      let num = 0;
+      const text = String(letters || '').toUpperCase();
+      for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        if (code < 65 || code > 90) continue;
+        num = num * 26 + (code - 64);
+      }
+      return num;
+    }
+
+    function parseCellAddress(address) {
+      const match = String(address || '').match(/^([A-Z]+)(\d+)$/i);
+      if (!match) return { row: 0, col: 0 };
+      return { col: columnLettersToNumber(match[1]), row: Number(match[2]) || 0 };
+    }
+
+    function parseRange(range) {
+      const parts = String(range || '').split(':');
+      const start = parseCellAddress(parts[0]);
+      const end = parseCellAddress(parts[1] || parts[0]);
+      return {
+        top: Math.min(start.row, end.row),
+        bottom: Math.max(start.row, end.row),
+        left: Math.min(start.col, end.col),
+        right: Math.max(start.col, end.col)
+      };
+    }
+
+    function cellHasContentOrStyle(cell) {
+      if (!cell) return false;
+      if (cell.value !== null && cell.value !== undefined && cell.value !== '') return true;
+      const style = cell.style || {};
+      return Object.keys(style).length > 0;
+    }
+
+    async function copyWorksheetIntoWorkbookFast(sourceWorksheet, targetWorkbook, targetName) {
       if (!sourceWorksheet) return false;
 
       const targetWorksheet = targetWorkbook.addWorksheet(targetName);
-
       targetWorksheet.properties = cloneForExcelJs(sourceWorksheet.properties || {});
       targetWorksheet.pageSetup = cloneForExcelJs(sourceWorksheet.pageSetup || {});
       targetWorksheet.views = cloneForExcelJs(sourceWorksheet.views || []);
       targetWorksheet.state = sourceWorksheet.state;
 
-      sourceWorksheet.columns.forEach((sourceColumn, index) => {
-        const targetColumn = targetWorksheet.getColumn(index + 1);
+      const merges = sourceWorksheet.model && Array.isArray(sourceWorksheet.model.merges)
+        ? sourceWorksheet.model.merges
+        : [];
+
+      let maxRow = 1;
+      let maxCol = 1;
+
+      sourceWorksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        maxRow = Math.max(maxRow, rowNumber);
+        row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+          if (cellHasContentOrStyle(cell)) {
+            maxCol = Math.max(maxCol, colNumber);
+          }
+        });
+      });
+
+      merges.forEach(rangeText => {
+        const range = parseRange(rangeText);
+        if (range.bottom && range.right) {
+          maxRow = Math.max(maxRow, range.bottom);
+          maxCol = Math.max(maxCol, range.right);
+        }
+      });
+
+      maxRow = Math.min(maxRow, 500);
+      maxCol = Math.min(maxCol, 80);
+
+      for (let col = 1; col <= maxCol; col++) {
+        const sourceColumn = sourceWorksheet.getColumn(col);
+        const targetColumn = targetWorksheet.getColumn(col);
         targetColumn.width = sourceColumn.width;
         targetColumn.hidden = sourceColumn.hidden;
         targetColumn.outlineLevel = sourceColumn.outlineLevel;
-        targetColumn.style = cloneForExcelJs(sourceColumn.style || {});
-      });
+        if (sourceColumn.style) targetColumn.style = cloneForExcelJs(sourceColumn.style);
+      }
 
-      sourceWorksheet.eachRow({ includeEmpty: true }, (sourceRow, rowNumber) => {
+      for (let rowNumber = 1; rowNumber <= maxRow; rowNumber++) {
+        const sourceRow = sourceWorksheet.getRow(rowNumber);
         const targetRow = targetWorksheet.getRow(rowNumber);
         targetRow.height = sourceRow.height;
         targetRow.hidden = sourceRow.hidden;
         targetRow.outlineLevel = sourceRow.outlineLevel;
-        targetRow.style = cloneForExcelJs(sourceRow.style || {});
+        if (sourceRow.style) targetRow.style = cloneForExcelJs(sourceRow.style);
 
-        sourceRow.eachCell({ includeEmpty: true }, (sourceCell, colNumber) => {
+        for (let colNumber = 1; colNumber <= maxCol; colNumber++) {
+          const sourceCell = sourceRow.getCell(colNumber);
+          if (!cellHasContentOrStyle(sourceCell)) continue;
+
           const targetCell = targetWorksheet.getCell(rowNumber, colNumber);
           targetCell.value = cloneForExcelJs(sourceCell.value);
           targetCell.style = cloneForExcelJs(sourceCell.style || {});
@@ -1452,42 +1521,97 @@
           if (sourceCell.fill) targetCell.fill = cloneForExcelJs(sourceCell.fill);
           if (sourceCell.font) targetCell.font = cloneForExcelJs(sourceCell.font);
           if (sourceCell.protection) targetCell.protection = cloneForExcelJs(sourceCell.protection);
-          if (sourceCell.dataValidation) targetCell.dataValidation = cloneForExcelJs(sourceCell.dataValidation);
           if (sourceCell.note) targetCell.note = cloneForExcelJs(sourceCell.note);
-        });
-      });
+        }
 
-      const merges = sourceWorksheet.model && Array.isArray(sourceWorksheet.model.merges)
-        ? sourceWorksheet.model.merges
-        : [];
+        if (rowNumber % 20 === 0) await yieldToBrowser();
+      }
 
-      merges.forEach(range => {
-        try {
-          targetWorksheet.mergeCells(range);
-        } catch (error) {
-          console.warn(`Could not copy merged range ${range} from ${sourceWorksheet.name}`, error);
+      merges.forEach(rangeText => {
+        const range = parseRange(rangeText);
+        if (range.bottom <= maxRow && range.right <= maxCol) {
+          try {
+            targetWorksheet.mergeCells(rangeText);
+          } catch (error) {
+            console.warn(`Could not copy merged range ${rangeText} from ${sourceWorksheet.name}`, error);
+          }
         }
       });
 
-      return true;
+      return targetWorksheet;
     }
 
-    function copyTemplateSheetsToMainWorkbook(workbook) {
-      const previousWorkbook = state.previousIndentExcelJsWorkbook;
-      if (!previousWorkbook) return;
+    function clearOrderSummarySaleAmountColumns(worksheet) {
+      if (!worksheet) return;
+
+      const saleAmountColumns = [];
+      let headerRowNumber = 0;
+
+      const maxHeaderScanRows = Math.min(20, worksheet.rowCount || 20);
+      const maxCols = Math.min(80, worksheet.columnCount || 80);
+
+      for (let rowNumber = 1; rowNumber <= maxHeaderScanRows; rowNumber++) {
+        const row = worksheet.getRow(rowNumber);
+
+        for (let colNumber = 1; colNumber <= maxCols; colNumber++) {
+          const cell = row.getCell(colNumber);
+          const cellText = normalizeKey(
+            cell && cell.value && typeof cell.value === 'object' && cell.value.richText
+              ? cell.value.richText.map(part => part.text || '').join('')
+              : cell.value && typeof cell.value === 'object' && cell.value.text
+                ? cell.value.text
+                : cell.value
+          );
+
+          if (cellText === 'SALE AMOUNT' || cellText.includes('SALE AMOUNT')) {
+            saleAmountColumns.push(colNumber);
+            headerRowNumber = headerRowNumber ? Math.min(headerRowNumber, rowNumber) : rowNumber;
+          }
+        }
+      }
+
+      if (!saleAmountColumns.length || !headerRowNumber) return;
+
+      const uniqueColumns = [...new Set(saleAmountColumns)];
+      const lastRow = Math.min(worksheet.rowCount || 500, 500);
+
+      for (let rowNumber = headerRowNumber + 1; rowNumber <= lastRow; rowNumber++) {
+        for (const colNumber of uniqueColumns) {
+          const cell = worksheet.getCell(rowNumber, colNumber);
+          const value = cell.value;
+
+          const isNumericValue = typeof value === 'number';
+          const isFormulaValue = value && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, 'formula');
+          const isNumericString = typeof value === 'string' && value.trim() !== '' && !Number.isNaN(Number(value.replace(/,/g, '')));
+
+          // Keep labels/text like GST @18% on Cost Price and Grand Total of Cost Price.
+          // Only clear numbers/formulas that were auto-filled in Sale Amount columns.
+          if (isNumericValue || isFormulaValue || isNumericString) {
+            cell.value = null;
+          }
+        }
+      }
+    }
+
+    async function copyTemplateSheetsToMainWorkbook(workbook) {
+      if (!state.previousIndentTemplateBuffer) return;
+
+      const previousWorkbook = new ExcelJS.Workbook();
+      await previousWorkbook.xlsx.load(state.previousIndentTemplateBuffer.slice(0));
 
       const instructionsSheet = findExcelJsWorksheetByName(previousWorkbook, 'Instructions', 'INSTRUCTION');
       const orderSummarySheet = findExcelJsWorksheetByName(previousWorkbook, 'ORDER Summary', 'ORDER');
 
       if (instructionsSheet) {
-        copyWorksheetIntoWorkbook(instructionsSheet, workbook, 'Instructions');
+        await copyWorksheetIntoWorkbookFast(instructionsSheet, workbook, 'Instructions');
       } else {
         const ws = workbook.addWorksheet('Instructions');
         ws.getCell('A1').value = 'Instructions sheet was not found in the uploaded Previous Indent workbook.';
       }
 
       if (orderSummarySheet) {
-        copyWorksheetIntoWorkbook(orderSummarySheet, workbook, 'ORDER Summary');
+        const copiedOrderSummarySheet = await copyWorksheetIntoWorkbookFast(orderSummarySheet, workbook, 'ORDER Summary');
+        clearOrderSummarySaleAmountColumns(copiedOrderSummarySheet);
       } else {
         const ws = workbook.addWorksheet('ORDER Summary');
         ws.getCell('A1').value = 'ORDER Summary sheet was not found in the uploaded Previous Indent workbook.';
@@ -1497,7 +1621,7 @@
     async function buildMainWorkbookBlob() {
       const workbook = new ExcelJS.Workbook();
 
-      copyTemplateSheetsToMainWorkbook(workbook);
+      await copyTemplateSheetsToMainWorkbook(workbook);
 
       addGroupedSheet(
         workbook,
@@ -1538,15 +1662,15 @@
 
       addGroupedSheet(
         workbook,
-        'AUDIO',
-        buildGroupedMediaRows(state.audioExceptionRows, 'audio'),
+        'PHOTOS',
+        buildGroupedMediaRows(state.photoExceptionRows, 'photos'),
         { includeCentreDate: false, isBooks: false }
       );
 
       addGroupedSheet(
         workbook,
-        'PHOTOS',
-        buildGroupedMediaRows(state.photoExceptionRows, 'photos'),
+        'AUDIO',
+        buildGroupedMediaRows(state.audioExceptionRows, 'audio'),
         { includeCentreDate: false, isBooks: false }
       );
 
@@ -1741,10 +1865,7 @@
         readWorkbook(audioStockFile)
       ]);
 
-      const previousIndentExcelJsWorkbook = new ExcelJS.Workbook();
-      await previousIndentExcelJsWorkbook.xlsx.load(await previousIndentFile.arrayBuffer());
-      state.previousIndentExcelJsWorkbook = previousIndentExcelJsWorkbook;
-      log('Loaded Previous Indent workbook template sheets for main download.');
+      state.previousIndentTemplateBuffer = await previousIndentFile.arrayBuffer();
 
       const masterSheet = masterWb.Sheets[masterWb.SheetNames[0]];
       const stockSheet = stockWb.Sheets[stockWb.SheetNames[0]];
@@ -1995,8 +2116,8 @@
       state.matchedStock = matchedStock;
       state.sosrcCount = sosrcCount;
 
-      state.mainWorkbookBlob = await buildMainWorkbookBlob();
-      state.exceptionWorkbookBlob = await buildExceptionWorkbookBlob();
+      state.mainWorkbookBlob = null;
+      state.exceptionWorkbookBlob = null;
 
       setStatus('Preview ready');
       log(`Processed Books: ${processed.length}`);
@@ -2031,7 +2152,7 @@
 
     els.downloadMainBtn.addEventListener('click', async () => {
       try {
-        setStatus('Preparing main file');
+        setStatus('Preparing main file; copying Instructions and ORDER Summary');
         state.mainWorkbookBlob = await buildMainWorkbookBlob();
         saveAs(state.mainWorkbookBlob, 'MMS_Indent_Output.xlsx');
         setStatus('Main file downloaded');
@@ -2093,13 +2214,13 @@
       state.audioRows = [];
       state.mainWorkbookBlob = null;
       state.exceptionWorkbookBlob = null;
+      state.previousIndentTemplateBuffer = null;
       state.matchedStock = 0;
       state.sosrcCount = 0;
       state.languagesShown = 0;
       state.exceptionRows = [];
       state.photoExceptionRows = [];
       state.audioExceptionRows = [];
-      state.previousIndentExcelJsWorkbook = null;
 
       els.booksCount.textContent = '0';
       els.matchCount.textContent = '0';
