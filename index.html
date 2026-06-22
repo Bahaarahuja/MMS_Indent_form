@@ -572,7 +572,8 @@
       languagesShown: 0,
       exceptionRows: [],
       photoExceptionRows: [],
-      audioExceptionRows: []
+      audioExceptionRows: [],
+      previousIndentExcelJsWorkbook: null
     };
 
     const els = {
@@ -1393,8 +1394,110 @@
       return ws;
     }
 
+    function cloneForExcelJs(value) {
+      if (value === null || value === undefined) return value;
+      if (value instanceof Date) return new Date(value.getTime());
+      if (typeof value !== 'object') return value;
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function findExcelJsWorksheetByName(workbook, preferredName, fallbackKeyword = '') {
+      if (!workbook) return null;
+      const preferredKey = normalizeKey(preferredName);
+      const exact = workbook.worksheets.find(ws => normalizeKey(ws.name) === preferredKey);
+      if (exact) return exact;
+
+      if (fallbackKeyword) {
+        const fallbackKey = normalizeKey(fallbackKeyword);
+        const contains = workbook.worksheets.find(ws => normalizeKey(ws.name).includes(fallbackKey));
+        if (contains) return contains;
+      }
+
+      return null;
+    }
+
+    function copyWorksheetIntoWorkbook(sourceWorksheet, targetWorkbook, targetName) {
+      if (!sourceWorksheet) return false;
+
+      const targetWorksheet = targetWorkbook.addWorksheet(targetName);
+
+      targetWorksheet.properties = cloneForExcelJs(sourceWorksheet.properties || {});
+      targetWorksheet.pageSetup = cloneForExcelJs(sourceWorksheet.pageSetup || {});
+      targetWorksheet.views = cloneForExcelJs(sourceWorksheet.views || []);
+      targetWorksheet.state = sourceWorksheet.state;
+
+      sourceWorksheet.columns.forEach((sourceColumn, index) => {
+        const targetColumn = targetWorksheet.getColumn(index + 1);
+        targetColumn.width = sourceColumn.width;
+        targetColumn.hidden = sourceColumn.hidden;
+        targetColumn.outlineLevel = sourceColumn.outlineLevel;
+        targetColumn.style = cloneForExcelJs(sourceColumn.style || {});
+      });
+
+      sourceWorksheet.eachRow({ includeEmpty: true }, (sourceRow, rowNumber) => {
+        const targetRow = targetWorksheet.getRow(rowNumber);
+        targetRow.height = sourceRow.height;
+        targetRow.hidden = sourceRow.hidden;
+        targetRow.outlineLevel = sourceRow.outlineLevel;
+        targetRow.style = cloneForExcelJs(sourceRow.style || {});
+
+        sourceRow.eachCell({ includeEmpty: true }, (sourceCell, colNumber) => {
+          const targetCell = targetWorksheet.getCell(rowNumber, colNumber);
+          targetCell.value = cloneForExcelJs(sourceCell.value);
+          targetCell.style = cloneForExcelJs(sourceCell.style || {});
+
+          if (sourceCell.numFmt) targetCell.numFmt = sourceCell.numFmt;
+          if (sourceCell.alignment) targetCell.alignment = cloneForExcelJs(sourceCell.alignment);
+          if (sourceCell.border) targetCell.border = cloneForExcelJs(sourceCell.border);
+          if (sourceCell.fill) targetCell.fill = cloneForExcelJs(sourceCell.fill);
+          if (sourceCell.font) targetCell.font = cloneForExcelJs(sourceCell.font);
+          if (sourceCell.protection) targetCell.protection = cloneForExcelJs(sourceCell.protection);
+          if (sourceCell.dataValidation) targetCell.dataValidation = cloneForExcelJs(sourceCell.dataValidation);
+          if (sourceCell.note) targetCell.note = cloneForExcelJs(sourceCell.note);
+        });
+      });
+
+      const merges = sourceWorksheet.model && Array.isArray(sourceWorksheet.model.merges)
+        ? sourceWorksheet.model.merges
+        : [];
+
+      merges.forEach(range => {
+        try {
+          targetWorksheet.mergeCells(range);
+        } catch (error) {
+          console.warn(`Could not copy merged range ${range} from ${sourceWorksheet.name}`, error);
+        }
+      });
+
+      return true;
+    }
+
+    function copyTemplateSheetsToMainWorkbook(workbook) {
+      const previousWorkbook = state.previousIndentExcelJsWorkbook;
+      if (!previousWorkbook) return;
+
+      const instructionsSheet = findExcelJsWorksheetByName(previousWorkbook, 'Instructions', 'INSTRUCTION');
+      const orderSummarySheet = findExcelJsWorksheetByName(previousWorkbook, 'ORDER Summary', 'ORDER');
+
+      if (instructionsSheet) {
+        copyWorksheetIntoWorkbook(instructionsSheet, workbook, 'Instructions');
+      } else {
+        const ws = workbook.addWorksheet('Instructions');
+        ws.getCell('A1').value = 'Instructions sheet was not found in the uploaded Previous Indent workbook.';
+      }
+
+      if (orderSummarySheet) {
+        copyWorksheetIntoWorkbook(orderSummarySheet, workbook, 'ORDER Summary');
+      } else {
+        const ws = workbook.addWorksheet('ORDER Summary');
+        ws.getCell('A1').value = 'ORDER Summary sheet was not found in the uploaded Previous Indent workbook.';
+      }
+    }
+
     async function buildMainWorkbookBlob() {
       const workbook = new ExcelJS.Workbook();
+
+      copyTemplateSheetsToMainWorkbook(workbook);
 
       addGroupedSheet(
         workbook,
@@ -1405,15 +1508,15 @@
 
       addGroupedSheet(
         workbook,
-        'PHOTOS',
-        buildGroupedMediaRows(state.photoRows, 'photos'),
+        'AUDIO',
+        buildGroupedMediaRows(state.audioRows, 'audio'),
         { includeCentreDate: true, isBooks: false }
       );
 
       addGroupedSheet(
         workbook,
-        'AUDIO',
-        buildGroupedMediaRows(state.audioRows, 'audio'),
+        'PHOTOS',
+        buildGroupedMediaRows(state.photoRows, 'photos'),
         { includeCentreDate: true, isBooks: false }
       );
 
@@ -1435,15 +1538,15 @@
 
       addGroupedSheet(
         workbook,
-        'PHOTOS',
-        buildGroupedMediaRows(state.photoExceptionRows, 'photos'),
+        'AUDIO',
+        buildGroupedMediaRows(state.audioExceptionRows, 'audio'),
         { includeCentreDate: false, isBooks: false }
       );
 
       addGroupedSheet(
         workbook,
-        'AUDIO',
-        buildGroupedMediaRows(state.audioExceptionRows, 'audio'),
+        'PHOTOS',
+        buildGroupedMediaRows(state.photoExceptionRows, 'photos'),
         { includeCentreDate: false, isBooks: false }
       );
 
@@ -1637,6 +1740,11 @@
         readWorkbook(audioMasterFile),
         readWorkbook(audioStockFile)
       ]);
+
+      const previousIndentExcelJsWorkbook = new ExcelJS.Workbook();
+      await previousIndentExcelJsWorkbook.xlsx.load(await previousIndentFile.arrayBuffer());
+      state.previousIndentExcelJsWorkbook = previousIndentExcelJsWorkbook;
+      log('Loaded Previous Indent workbook template sheets for main download.');
 
       const masterSheet = masterWb.Sheets[masterWb.SheetNames[0]];
       const stockSheet = stockWb.Sheets[stockWb.SheetNames[0]];
@@ -1991,6 +2099,7 @@
       state.exceptionRows = [];
       state.photoExceptionRows = [];
       state.audioExceptionRows = [];
+      state.previousIndentExcelJsWorkbook = null;
 
       els.booksCount.textContent = '0';
       els.matchCount.textContent = '0';
