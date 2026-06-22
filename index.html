@@ -28,8 +28,11 @@
       --excel-group-text: #ffffff;
       --excel-sosrc: #f8d7da;
       --excel-gray: #bfc3c9;
+      --excel-dl: #d9c3a5;
+      --excel-india: #d9ead3;
       --excel-body: #d8ffff;
       --excel-border: #111111;
+      --sosrc-text: #0000ff;
     }
 
     * { box-sizing: border-box; }
@@ -206,9 +209,7 @@
       align-items: end;
     }
 
-    .toolbar-filter {
-      min-width: 0;
-    }
+    .toolbar-filter { min-width: 0; }
 
     .status {
       display: inline-flex;
@@ -289,9 +290,7 @@
     }
 
     thead th:first-child,
-    tbody td:first-child {
-      border-left: 1px solid var(--excel-border);
-    }
+    tbody td:first-child { border-left: 1px solid var(--excel-border); }
 
     tbody td {
       padding: 11px 10px;
@@ -302,9 +301,7 @@
       background: var(--excel-body);
     }
 
-    tbody tr:hover td {
-      filter: brightness(0.99);
-    }
+    tbody tr:hover td { filter: brightness(0.99); }
 
     .group-row td {
       position: sticky;
@@ -321,21 +318,19 @@
       padding: 4px 10px;
     }
 
-    .data-row td {
-      background: var(--excel-body);
-    }
+    .data-row td { background: var(--excel-body); }
+    .data-row.sosrc-row td { background: var(--excel-sosrc); }
+    .data-row.sosrc-row.india-row td,
+    .data-row.india-row td { background: var(--excel-india); }
+    .data-row.sosrc-row.dl-row td,
+    .data-row.dl-row td { background: var(--excel-dl); }
+    .data-row.sosrc-row.gray-row td,
+    .data-row.india-row.gray-row td,
+    .data-row.dl-row.gray-row td,
+    .data-row.gray-row td { background: var(--excel-gray); }
 
-    .data-row.sosrc-row td {
-      background: var(--excel-sosrc);
-    }
-
-    .data-row.gray-row td {
-      background: var(--excel-gray);
-    }
-
-    .data-row td.qty-cell {
-      background: #ffffff !important;
-    }
+    .data-row td.qty-cell { background: #ffffff !important; }
+    .data-row.gray-row td.qty-cell { background: var(--excel-gray) !important; }
 
     .qty-cell input {
       width: 54px;
@@ -346,17 +341,22 @@
       background: #ffffff;
     }
 
+    .data-row.gray-row .qty-cell input { background: var(--excel-gray); }
+
     .title-cell,
     .code-cell,
-    .mms-cell {
-      font-weight: 600;
-    }
+    .mms-cell { font-weight: 600; }
 
     .remarks-text {
       font-size: 12px;
       font-weight: 700;
       line-height: 1.35;
       white-space: pre-line;
+    }
+
+    .sosrc-remark {
+      color: var(--sosrc-text);
+      font-style: italic;
     }
 
     .empty {
@@ -395,22 +395,16 @@
     }
 
     @media (max-width: 1280px) {
-      .upload-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
+      .upload-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     @media (max-width: 1180px) {
-      .toolbar-filters {
-        grid-template-columns: 1fr 1fr;
-      }
+      .toolbar-filters { grid-template-columns: 1fr 1fr; }
     }
 
     @media (max-width: 700px) {
       .upload-grid,
-      .toolbar-filters {
-        grid-template-columns: 1fr;
-      }
+      .toolbar-filters { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 640px) {
@@ -721,10 +715,12 @@
     function findSheetNameExactOrContains(workbook, preferredName, fallbackKeyword = '') {
       const exact = workbook.SheetNames.find(name => normalizeKey(name) === normalizeKey(preferredName));
       if (exact) return exact;
+
       if (fallbackKeyword) {
         const contains = workbook.SheetNames.find(name => normalizeKey(name).includes(normalizeKey(fallbackKeyword)));
         if (contains) return contains;
       }
+
       return null;
     }
 
@@ -779,61 +775,42 @@
       return -1;
     }
 
-    function getMasterRows(sheet) {
+    function getRowsByHeader(sheet, requiredCandidatesList, maxScanRows, errorMessage) {
       const matrix = getSheetMatrix(sheet);
-      const headerIndex = detectHeaderRow(matrix, [
+      const headerIndex = detectHeaderRow(matrix, requiredCandidatesList, maxScanRows);
+      if (headerIndex === -1) throw new Error(errorMessage);
+      return rowsFromHeaderIndex(matrix, headerIndex);
+    }
+
+    function getMasterRows(sheet) {
+      return getRowsByHeader(sheet, [
         ['Language'],
         ['MMS Code', 'MMS CODE'],
         ['Book Name', 'TITLE', 'Title']
-      ], 20);
-
-      if (headerIndex === -1) {
-        throw new Error('Could not detect header row in Books Master file.');
-      }
-
-      return rowsFromHeaderIndex(matrix, headerIndex);
+      ], 20, 'Could not detect header row in Books Master file.');
     }
 
     function getSosrcRows(sheet) {
-      const matrix = getSheetMatrix(sheet);
-      const headerIndex = detectHeaderRow(matrix, [
+      return getRowsByHeader(sheet, [
         ['Short Code', 'SHORT CODE', 'Code', 'CODE'],
         ['Book Name', 'BOOK NAME', 'Title', 'TITLE']
-      ], 20);
-
-      if (headerIndex === -1) {
-        throw new Error('Could not detect header row in SOSRC file.');
-      }
-
-      return rowsFromHeaderIndex(matrix, headerIndex);
+      ], 20, 'Could not detect header row in SOSRC file.');
     }
 
     function getPreviousIndentRows(sheet) {
-      const matrix = getSheetMatrix(sheet);
-      const headerIndex = detectHeaderRow(matrix, [
+      return getRowsByHeader(sheet, [
         ['CODE', 'Code'],
         ['MMS CODE', 'MMS Code', 'MMSCODE'],
         ['TITLE', 'Title']
-      ], 30);
-
-      if (headerIndex === -1) {
-        throw new Error('Could not detect header row in Previous Indent Books sheet.');
-      }
-
-      return rowsFromHeaderIndex(matrix, headerIndex);
+      ], 30, 'Could not detect header row in Previous Indent Books sheet.');
     }
 
     function getPreviousMediaRows(sheet, label) {
-      const matrix = getSheetMatrix(sheet);
-      const headerIndex = detectHeaderRow(matrix, [
-        ['Short Code', 'SHORT CODE', 'BAV Code', 'BAV CODE', 'Photo code', 'PHOTO CODE', 'Code', 'CODE']
-      ], 30);
-
-      if (headerIndex === -1) {
-        throw new Error(`Could not detect header row in Previous Indent ${label} sheet.`);
-      }
-
-      return rowsFromHeaderIndex(matrix, headerIndex);
+      return getRowsByHeader(sheet, [
+        ['CODE', 'Code'],
+        ['MMS CODE', 'MMS Code', 'MMSCODE'],
+        ['TITLE', 'Title']
+      ], 40, `Could not detect header row in Previous Indent ${label} sheet.`);
     }
 
     function getHeaderedStockRows(sheet) {
@@ -905,12 +882,162 @@
       return out;
     }
 
-    function formatRemarkText(remarks) {
-      const parts = String(remarks || '')
-        .split(',')
-        .map(x => x.trim())
-        .filter(Boolean);
+    function buildGroupedMediaRows(rows, kind) {
+      const out = [];
+      const fallbackLabel = kind === 'audio' ? 'AUDIO' : 'PHOTOS';
 
+      const groups = new Map();
+
+      for (const row of rows) {
+        const label = normalizeText(row.category || fallbackLabel).toUpperCase() || fallbackLabel;
+        if (!groups.has(label)) groups.set(label, []);
+        groups.get(label).push(row);
+      }
+
+      const preferredOrder = kind === 'audio' ? audioCategoryOrder : photoCategoryOrder;
+
+      const labels = [...groups.keys()].sort((a, b) => {
+        const ai = preferredOrder.indexOf(a);
+        const bi = preferredOrder.indexOf(b);
+
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai !== -1) return -1;
+        if (bi !== -1) return 1;
+        return a.localeCompare(b);
+      });
+
+      for (const label of labels) {
+        const groupRows = groups.get(label).sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+        out.push({ type: 'group', label });
+        out.push(...groupRows.map(r => ({ type: 'book', ...r })));
+      }
+
+      return out;
+    }
+
+    const audioCategoryOrder = [
+      'PEN DRIVE (AUDIO)',
+      'PUNJABI AUDIO CD - MAHARAJ CHARAN SINGH JI',
+      'HINDI AUDIO CD',
+      'HINDI AUDIO CD - MAHARAJ JAGAT SINGH JI',
+      'HINDI AUDIO CD - MAHARAJ SAWAN SINGH JI',
+      'HINDI AUDIO CD - DADA MANGHARAM',
+      'HINDI AUDIO CD - DADA BABANI',
+      'SHABAD CD',
+      'ENGLISH AUDIO QUESTION & ANSWER CD',
+      'ENGLISH AUDIO SATSANG CD',
+      'DVD VIDEO'
+    ];
+
+    const photoCategoryOrder = [
+      'BLACK & WHITE',
+      'BLACK/WHITE MOUNTED GLOSS',
+      'CANVAS PHOTOS (ORDERS SHOULD BE PLACED IN EVEN NUMBERS)',
+      'FRAMED PICTURES',
+      'LAMINATED',
+      'MOUNTED',
+      'PHOTO',
+      'PRINT',
+      'SEPIA PHOTO',
+      'SEPIA PRINT',
+      'SEPIA PRINT MOUNTD GLOSS'
+    ];
+
+    function canonicalAudioCategory(value) {
+      const raw = normalizeText(value);
+      const key = normalizeKey(raw);
+
+      const map = new Map([
+        ['PEN DRIVE AUDIO', 'PEN DRIVE (AUDIO)'],
+        ['PEN DRIVE (AUDIO)', 'PEN DRIVE (AUDIO)'],
+        ['PUNJABI AUDIO CD - MAHARAJ CHARAN SINGH JI', 'PUNJABI AUDIO CD - MAHARAJ CHARAN SINGH JI'],
+        ['PUNJABI AUDIO CD MAHARAJ CHARAN SINGH JI', 'PUNJABI AUDIO CD - MAHARAJ CHARAN SINGH JI'],
+        ['HINDI AUDIO CD', 'HINDI AUDIO CD'],
+        ['HINDI AUDIO CD - MAHARAJ JAGAT SINGH JI', 'HINDI AUDIO CD - MAHARAJ JAGAT SINGH JI'],
+        ['HINDI AUDIO CD MAHARAJ JAGAT SINGH JI', 'HINDI AUDIO CD - MAHARAJ JAGAT SINGH JI'],
+        ['HINDI AUDIO CD - MAHARAJ SAWAN SINGH JI', 'HINDI AUDIO CD - MAHARAJ SAWAN SINGH JI'],
+        ['HINDI AUDIO CD MAHARAJ SAWAN SINGH JI', 'HINDI AUDIO CD - MAHARAJ SAWAN SINGH JI'],
+        ['HINDI AUDIO CD - DADA MANGHARAM', 'HINDI AUDIO CD - DADA MANGHARAM'],
+        ['HINDI AUDIO CD DADA MANGHARAM', 'HINDI AUDIO CD - DADA MANGHARAM'],
+        ['HINDI AUDIO CD - DADA BABANI', 'HINDI AUDIO CD - DADA BABANI'],
+        ['HINDI AUDIO CD DADA BABANI', 'HINDI AUDIO CD - DADA BABANI'],
+        ['SHABAD CD', 'SHABAD CD'],
+        ['ENGLISH AUDIO QUESTION & ANSWER CD', 'ENGLISH AUDIO QUESTION & ANSWER CD'],
+        ['ENGLISH AUDIO QUESTION AND ANSWER CD', 'ENGLISH AUDIO QUESTION & ANSWER CD'],
+        ['ENGLISH AUDIO Q&A CD', 'ENGLISH AUDIO QUESTION & ANSWER CD'],
+        ['ENGLISH AUDIO SATSANG CD', 'ENGLISH AUDIO SATSANG CD'],
+        ['DVD VIDEO', 'DVD VIDEO']
+      ]);
+
+      if (map.has(key)) return map.get(key);
+
+      if (key.includes('PEN DRIVE')) return 'PEN DRIVE (AUDIO)';
+      if (key.includes('PUNJABI') && key.includes('CHARAN SINGH')) return 'PUNJABI AUDIO CD - MAHARAJ CHARAN SINGH JI';
+      if (key.includes('JAGAT SINGH')) return 'HINDI AUDIO CD - MAHARAJ JAGAT SINGH JI';
+      if (key.includes('SAWAN SINGH')) return 'HINDI AUDIO CD - MAHARAJ SAWAN SINGH JI';
+      if (key.includes('MANGHARAM')) return 'HINDI AUDIO CD - DADA MANGHARAM';
+      if (key.includes('BABANI')) return 'HINDI AUDIO CD - DADA BABANI';
+      if (key.includes('SHABAD')) return 'SHABAD CD';
+      if (key.includes('QUESTION') || key.includes('Q&A')) return 'ENGLISH AUDIO QUESTION & ANSWER CD';
+      if (key.includes('ENGLISH') && key.includes('SATSANG')) return 'ENGLISH AUDIO SATSANG CD';
+      if (key.includes('DVD')) return 'DVD VIDEO';
+      if (key.includes('HINDI') && key.includes('AUDIO')) return 'HINDI AUDIO CD';
+
+      return raw ? raw.toUpperCase() : 'AUDIO';
+    }
+
+    function canonicalPhotoCategory(value) {
+      const raw = normalizeText(value);
+      const key = normalizeKey(raw);
+
+      const map = new Map([
+        ['BLACK & WHITE', 'BLACK & WHITE'],
+        ['BLACK AND WHITE', 'BLACK & WHITE'],
+        ['BLACK/WHITE MOUNTED GLOSS', 'BLACK/WHITE MOUNTED GLOSS'],
+        ['BLACK WHITE MOUNTED GLOSS', 'BLACK/WHITE MOUNTED GLOSS'],
+        ['BLACK/WHITE MOUNTED GLOSSY', 'BLACK/WHITE MOUNTED GLOSS'],
+        ['CANVAS PHOTOS', 'CANVAS PHOTOS (ORDERS SHOULD BE PLACED IN EVEN NUMBERS)'],
+        ['CANVAS PHOTOS (ORDERS SHOULD BE PLACED IN EVEN NUMBERS)', 'CANVAS PHOTOS (ORDERS SHOULD BE PLACED IN EVEN NUMBERS)'],
+        ['FRAMED PICTURES', 'FRAMED PICTURES'],
+        ['LAMINATED', 'LAMINATED'],
+        ['MOUNTED', 'MOUNTED'],
+        ['PHOTO', 'PHOTO'],
+        ['PRINT', 'PRINT'],
+        ['SEPIA PHOTO', 'SEPIA PHOTO'],
+        ['SEPIA PRINT', 'SEPIA PRINT'],
+        ['SEPIA PRINT MOUNTD GLOSS', 'SEPIA PRINT MOUNTD GLOSS'],
+        ['SEPIA PRINT MOUNTED GLOSS', 'SEPIA PRINT MOUNTD GLOSS']
+      ]);
+
+      if (map.has(key)) return map.get(key);
+
+      if (key.includes('CANVAS')) return 'CANVAS PHOTOS (ORDERS SHOULD BE PLACED IN EVEN NUMBERS)';
+      if (key.includes('FRAMED')) return 'FRAMED PICTURES';
+      if (key.includes('LAMINATED')) return 'LAMINATED';
+      if (key === 'MOUNTED' || key.includes(' MOUNTED')) return 'MOUNTED';
+      if (key.includes('BLACK') && key.includes('MOUNT')) return 'BLACK/WHITE MOUNTED GLOSS';
+      if (key.includes('BLACK') && key.includes('WHITE')) return 'BLACK & WHITE';
+      if (key.includes('SEPIA') && key.includes('MOUNT')) return 'SEPIA PRINT MOUNTD GLOSS';
+      if (key.includes('SEPIA') && key.includes('PHOTO')) return 'SEPIA PHOTO';
+      if (key.includes('SEPIA') && key.includes('PRINT')) return 'SEPIA PRINT';
+      if (key.includes('PRINT')) return 'PRINT';
+      if (key.includes('PHOTO')) return 'PHOTO';
+
+      return raw ? raw.toUpperCase() : 'PHOTOS';
+    }
+
+    function formatRemarkHtml(remarks) {
+      const parts = String(remarks || '').split(',').map(x => x.trim()).filter(Boolean);
+      return parts.map(part => {
+        if (normalizeKey(part) === 'SOSRC') {
+          return `<span class="sosrc-remark">${escapeHtml(part)}</span>`;
+        }
+        return escapeHtml(part);
+      }).join(', ');
+    }
+
+    function formatRemarkText(remarks) {
+      const parts = String(remarks || '').split(',').map(x => x.trim()).filter(Boolean);
       return parts.join(', ');
     }
 
@@ -968,10 +1095,6 @@
       });
 
       return sorted;
-    }
-
-    function sortMediaRows(rows) {
-      return [...rows].sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
     }
 
     function applyFilters() {
@@ -1075,15 +1198,8 @@
             if (row.type === 'group') {
               return `
                 <tr class="group-row">
-                  <td></td>
-                  <td></td>
-                  <td>${escapeHtml(row.label)}</td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
+                  <td></td><td></td><td>${escapeHtml(row.label)}</td>
+                  <td></td><td></td><td></td><td></td><td></td><td></td>
                 </tr>
               `;
             }
@@ -1093,6 +1209,8 @@
             const rowClasses = [
               'data-row',
               row.isSosrc ? 'sosrc-row' : '',
+              row.isIndiaLow ? 'india-row' : '',
+              row.isDlLow ? 'dl-row' : '',
               row.isGrayStock ? 'gray-row' : ''
             ].filter(Boolean).join(' ');
 
@@ -1101,7 +1219,7 @@
                 <td class="code-cell">${escapeHtml(row.code)}</td>
                 <td class="mms-cell">${escapeHtml(row.mmsCode)}</td>
                 <td class="title-cell">${escapeHtml(row.title)}</td>
-                <td><div class="remarks-text">${escapeHtml(formatRemarkText(row.remarks))}</div></td>
+                <td><div class="remarks-text">${formatRemarkHtml(row.remarks)}</div></td>
                 <td class="qty-cell"><input type="number" min="0" step="1" value="${Number(row.qty) || ''}" data-qty-input="${escapeHtml(row.id)}"></td>
                 <td>${currency(row.salePrice)}</td>
                 <td>${currency(row.costPrice)}</td>
@@ -1143,18 +1261,63 @@
       };
     }
 
-    function styleDataRow(row, fillArgb) {
+    function applySosrcRichText(cell, remarks) {
+      const parts = String(remarks || '').split(',').map(x => x.trim()).filter(Boolean);
+      if (!parts.length) {
+        cell.value = '';
+        return;
+      }
+
+      const richText = [];
+      parts.forEach((part, idx) => {
+        const isSosrc = normalizeKey(part) === 'SOSRC';
+        richText.push({
+          text: part,
+          font: {
+            name: 'Arial',
+            size: 10,
+            bold: false,
+            italic: isSosrc,
+            color: { argb: isSosrc ? 'FF0000FF' : 'FF111111' }
+          }
+        });
+        if (idx < parts.length - 1) {
+          richText.push({
+            text: ', ',
+            font: { name: 'Arial', size: 10, color: { argb: 'FF111111' } }
+          });
+        }
+      });
+
+      cell.value = { richText };
+    }
+
+    function styleDataRow(row, fillArgb, item = {}) {
       row.eachCell({ includeEmpty: true }, cell => {
         const isQtyCell = cell.col === 5;
-        addCellStyle(cell, isQtyCell ? 'FFFFFFFF' : fillArgb, false, cell.col === 3 || cell.col === 4 ? 'left' : 'center', true);
+        const cellFill = isQtyCell && !item.isGrayStock ? 'FFFFFFFF' : fillArgb;
+        addCellStyle(cell, cellFill, false, cell.col === 3 || cell.col === 4 ? 'left' : 'center', true);
         if (cell.col === 3 || cell.col === 4) {
           cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
         }
       });
 
+      if (item.remarks) {
+        applySosrcRichText(row.getCell(4), item.remarks);
+        row.getCell(4).alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+      }
+
       [6, 7, 8, 9].forEach(i => row.getCell(i).numFmt = '#,##0.00');
       row.getCell(5).numFmt = '0';
       row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
+    }
+
+    function getBookFill(item) {
+      if (item.isGrayStock) return 'FFBFC3C9';
+      if (item.isIndiaLow) return 'FFD9EAD3';
+      if (item.isDlLow) return 'FFD9C3A5';
+      if (item.isSosrc) return 'FFF8D7DA';
+      return 'FFD8FFFF';
     }
 
     function addGroupedSheet(workbook, sheetName, rows, options = {}) {
@@ -1220,11 +1383,9 @@
         row.getCell(8).value = { formula: `E${rowNum}*F${rowNum}` };
         row.getCell(9).value = { formula: `E${rowNum}*G${rowNum}` };
 
-        let fillArgb = 'FFD8FFFF';
-        if (isBooks && item.isSosrc) fillArgb = 'FFF8D7DA';
-        else if (isBooks && item.isGrayStock) fillArgb = 'FFBFC3C9';
+        const fillArgb = isBooks ? getBookFill(item) : 'FFD8FFFF';
 
-        styleDataRow(row, fillArgb);
+        styleDataRow(row, fillArgb, item);
         rowNum += 1;
       }
 
@@ -1245,14 +1406,14 @@
       addGroupedSheet(
         workbook,
         'PHOTOS',
-        sortMediaRows(state.photoRows).map(r => ({ type: 'book', ...r })),
+        buildGroupedMediaRows(state.photoRows, 'photos'),
         { includeCentreDate: true, isBooks: false }
       );
 
       addGroupedSheet(
         workbook,
         'AUDIO',
-        sortMediaRows(state.audioRows).map(r => ({ type: 'book', ...r })),
+        buildGroupedMediaRows(state.audioRows, 'audio'),
         { includeCentreDate: true, isBooks: false }
       );
 
@@ -1275,14 +1436,14 @@
       addGroupedSheet(
         workbook,
         'PHOTOS',
-        sortMediaRows(state.photoExceptionRows).map(r => ({ type: 'book', ...r })),
+        buildGroupedMediaRows(state.photoExceptionRows, 'photos'),
         { includeCentreDate: false, isBooks: false }
       );
 
       addGroupedSheet(
         workbook,
         'AUDIO',
-        sortMediaRows(state.audioExceptionRows).map(r => ({ type: 'book', ...r })),
+        buildGroupedMediaRows(state.audioExceptionRows, 'audio'),
         { includeCentreDate: false, isBooks: false }
       );
 
@@ -1292,20 +1453,23 @@
       });
     }
 
-    function getShortCodeSetFromRows(rows, candidates) {
+    function getShortCodeSetFromPreviousRows(rows) {
       if (!rows.length) return new Set();
 
       const first = rows[0];
-      const shortCodeCol = findColumn(first, candidates.shortCode || []);
-      const codeCol = findColumn(first, candidates.code || []);
-
+      const codeCol = findColumn(first, ['CODE', 'Code']);
+      const shortCodeCol = findColumn(first, ['Short Code', 'SHORT CODE']);
       const out = new Set();
 
       for (const row of rows) {
         let shortCode = '';
         if (shortCodeCol) shortCode = normalizeCode(row[shortCodeCol]);
         if (!shortCode && codeCol) shortCode = toShortCode(row[codeCol]);
-        if (shortCode) out.add(shortCode);
+
+        const title = normalizeKey(row[findColumn(row, ['TITLE', 'Title'])] || '');
+        if (title.includes('TOTAL')) continue;
+
+        if (shortCode && shortCode !== 'TOTAL') out.add(shortCode);
       }
 
       return out;
@@ -1320,6 +1484,7 @@
         photoCode: findColumn(first, ['Photo code', 'PHOTO CODE']),
         title: findColumn(first, ['Item Details', 'ITEM DETAILS']),
         shortCode: findColumn(first, ['Short Code', 'SHORT CODE']),
+        photoType: findColumn(first, ['Photo type', 'PHOTO TYPE', 'Photo Type']),
         bavCode: findColumn(first, ['BAV Code', 'BAV CODE']),
         salePrice: findColumn(first, ['Sale Price (Rs.)', 'SALE PRICE (RS.)', 'Sale Price']),
         costPrice: findColumn(first, ['Cost Price (Rs.)', 'COST PRICE (RS.)', 'Cost Price'])
@@ -1347,6 +1512,7 @@
           const shortCode = normalizeCode(row[cols.shortCode]) || toShortCode(row[cols.bavCode] || row[cols.photoCode]);
           const salePrice = normalizeNumber(row[cols.salePrice]);
           const costPrice = normalizeNumber(row[cols.costPrice]);
+          const category = canonicalPhotoCategory(row[cols.photoType]);
 
           if (!shortCode && !displayCode && !title) return null;
 
@@ -1356,6 +1522,7 @@
             shortCode,
             mmsCode,
             title,
+            category,
             remarks: '',
             qty: 0,
             salePrice,
@@ -1380,6 +1547,8 @@
         bavCode: findColumn(first, ['BAV code', 'BAV CODE', 'BAV Code']),
         title: findColumn(first, ['Item Details', 'ITEM DETAILS']),
         shortCode: findColumn(first, ['Short Code', 'SHORT CODE']),
+        type: findColumn(first, ['Type', 'TYPE']),
+        typeDescription: findColumn(first, ['Type Description', 'TYPE DESCRIPTION']),
         salePrice: findColumn(first, ['Sale Price (Rs.)', 'SALE PRICE (RS.)', 'Sale Price']),
         costPrice: findColumn(first, ['Cost Price (Rs.)', 'COST PRICE (RS.)', 'Cost Price'])
       };
@@ -1406,6 +1575,7 @@
           const shortCode = normalizeCode(row[cols.shortCode]) || toShortCode(row[cols.bavCode]);
           const salePrice = normalizeNumber(row[cols.salePrice]);
           const costPrice = normalizeNumber(row[cols.costPrice]);
+          const category = canonicalAudioCategory(row[cols.typeDescription] || row[cols.type]);
 
           if (!shortCode && !displayCode && !title) return null;
 
@@ -1415,6 +1585,7 @@
             shortCode,
             mmsCode,
             title,
+            category,
             remarks: '',
             qty: 0,
             salePrice,
@@ -1493,27 +1664,17 @@
       const stockRowsRaw = getHeaderedStockRows(stockSheet);
       const sosrcRowsRaw = getSosrcRows(sosrcSheet);
 
-      const photoMasterMatrix = getSheetMatrix(photoMasterSheet);
-      const photoMasterHeaderIndex = detectHeaderRow(photoMasterMatrix, [
+      const photoMasterRowsRaw = getRowsByHeader(photoMasterSheet, [
         ['Item Number (MMS)', 'ITEM NUMBER (MMS)'],
         ['Short Code', 'SHORT CODE'],
         ['Item Details', 'ITEM DETAILS']
-      ], 20);
-      if (photoMasterHeaderIndex === -1) {
-        throw new Error('Could not detect header row in Photos Master sheet.');
-      }
-      const photoMasterRowsRaw = rowsFromHeaderIndex(photoMasterMatrix, photoMasterHeaderIndex);
+      ], 20, 'Could not detect header row in Photos Master sheet.');
 
-      const audioMasterMatrix = getSheetMatrix(audioMasterSheet);
-      const audioMasterHeaderIndex = detectHeaderRow(audioMasterMatrix, [
+      const audioMasterRowsRaw = getRowsByHeader(audioMasterSheet, [
         ['Item Number (MMS)', 'ITEM NUMBER (MMS)'],
         ['Short Code', 'SHORT CODE'],
         ['Item Details', 'ITEM DETAILS']
-      ], 20);
-      if (audioMasterHeaderIndex === -1) {
-        throw new Error('Could not detect header row in Audio Master sheet.');
-      }
-      const audioMasterRowsRaw = rowsFromHeaderIndex(audioMasterMatrix, audioMasterHeaderIndex);
+      ], 20, 'Could not detect header row in Audio Master sheet.');
 
       const photoStockRowsRaw = getHeaderedStockRowsRow2(photoStockSheet);
       const audioStockRowsRaw = getHeaderedStockRowsRow2(audioStockSheet);
@@ -1534,21 +1695,16 @@
       log(`Audio master rows loaded: ${audioMasterRowsRaw.length}`);
       log(`Audio stock rows loaded: ${audioStockRowsRaw.length}`);
 
-      const previousBooksSheetName =
-        findSheetNameExactOrContains(previousIndentWb, 'BOOKS', 'BOOK');
-
+      const previousBooksSheetName = findSheetNameExactOrContains(previousIndentWb, 'BOOKS', 'BOOK');
       if (!previousBooksSheetName) {
         throw new Error('Could not find Books sheet in Previous Indent file.');
       }
 
+      const previousPhotosSheetName = findSheetNameExactOrContains(previousIndentWb, 'PHOTOS', 'PHOTO');
+      const previousAudioSheetName = findSheetNameExactOrContains(previousIndentWb, 'AUDIO', 'AUDIO');
+
       log(`Previous indent Books sheet used: ${previousBooksSheetName}`);
       const previousBooksRowsRaw = getPreviousIndentRows(previousIndentWb.Sheets[previousBooksSheetName]);
-
-      const previousPhotosSheetName =
-        findSheetNameExactOrContains(previousIndentWb, 'PHOTOS', 'PHOTO');
-
-      const previousAudioSheetName =
-        findSheetNameExactOrContains(previousIndentWb, 'AUDIO', 'AUDIO');
 
       let previousPhotoShortCodeSet = new Set();
       let previousAudioShortCodeSet = new Set();
@@ -1556,23 +1712,19 @@
       if (previousPhotosSheetName) {
         log(`Previous indent Photos sheet used: ${previousPhotosSheetName}`);
         const rows = getPreviousMediaRows(previousIndentWb.Sheets[previousPhotosSheetName], 'Photos');
-        previousPhotoShortCodeSet = getShortCodeSetFromRows(rows, {
-          shortCode: ['Short Code', 'SHORT CODE'],
-          code: ['BAV Code', 'BAV CODE', 'Photo code', 'PHOTO CODE', 'Code', 'CODE']
-        });
+        previousPhotoShortCodeSet = getShortCodeSetFromPreviousRows(rows);
+        log(`Previous indent Photos short codes available: ${previousPhotoShortCodeSet.size}`);
       } else {
-        log('No Photos sheet found in Previous Indent file. Photos exception tab will be empty.');
+        log('No PHOTOS sheet found in Previous Indent file. Photos exception tab will show all generated photos as exceptions.');
       }
 
       if (previousAudioSheetName) {
         log(`Previous indent Audio sheet used: ${previousAudioSheetName}`);
         const rows = getPreviousMediaRows(previousIndentWb.Sheets[previousAudioSheetName], 'Audio');
-        previousAudioShortCodeSet = getShortCodeSetFromRows(rows, {
-          shortCode: ['Short Code', 'SHORT CODE'],
-          code: ['BAV Code', 'BAV CODE', 'Code', 'CODE']
-        });
+        previousAudioShortCodeSet = getShortCodeSetFromPreviousRows(rows);
+        log(`Previous indent Audio short codes available: ${previousAudioShortCodeSet.size}`);
       } else {
-        log('No Audio sheet found in Previous Indent file. Audio exception tab will be empty.');
+        log('No AUDIO sheet found in Previous Indent file. Audio exception tab will show all generated audio as exceptions.');
       }
 
       const masterFirst = masterRowsRaw[0];
@@ -1601,23 +1753,15 @@
       }
 
       const stockMmsCol = findColumn(stockFirst, ['MMS Code', 'MMS CODE']);
-      if (!stockMmsCol) {
-        throw new Error('Books Stock file MMS Code column not found.');
-      }
+      if (!stockMmsCol) throw new Error('Books Stock file MMS Code column not found.');
 
       const sosrcCols = {
-        shortCode: findColumn(sosrcFirst, ['Short Code', 'SHORT CODE', 'Code', 'CODE']),
-        bookName: findColumn(sosrcFirst, ['Book Name', 'BOOK NAME', 'Title', 'TITLE'])
+        shortCode: findColumn(sosrcFirst, ['Short Code', 'SHORT CODE', 'Code', 'CODE'])
       };
-
-      if (!sosrcCols.shortCode) {
-        throw new Error('SOSRC file Short Code column not found.');
-      }
+      if (!sosrcCols.shortCode) throw new Error('SOSRC file Short Code column not found.');
 
       const previousCodeCol = findColumn(previousFirst, ['CODE', 'Code']);
-      if (!previousCodeCol) {
-        throw new Error('Previous Indent Books sheet CODE column not found.');
-      }
+      if (!previousCodeCol) throw new Error('Previous Indent Books sheet CODE column not found.');
 
       const totalStockMap = new Map();
       const vStockMap = new Map();
