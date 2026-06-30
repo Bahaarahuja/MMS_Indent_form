@@ -628,6 +628,7 @@
       filteredRows: [],
       groupedRows: [],
       photoRows: [],
+      calendarRows: [],
       audioRows: [],
       mainWorkbookBlob: null,
       exceptionWorkbookBlob: null,
@@ -637,6 +638,7 @@
       languagesShown: 0,
       exceptionRows: [],
       photoExceptionRows: [],
+      calendarExceptionRows: [],
       audioExceptionRows: []
     };
 
@@ -1020,12 +1022,14 @@
 
     function buildGroupedMediaRows(rows, kind) {
       const out = [];
-      const fallbackLabel = kind === 'audio' ? 'AUDIO' : 'PHOTOS';
+      const fallbackLabel = kind === 'audio' ? 'AUDIO' : (kind === 'calendar' ? 'CALENDAR' : 'PHOTOS');
 
       const groups = new Map();
 
       for (const row of rows) {
-        const label = normalizeText(row.category || fallbackLabel).toUpperCase() || fallbackLabel;
+        const label = kind === 'calendar'
+          ? 'CALENDAR'
+          : (normalizeText(row.category || fallbackLabel).toUpperCase() || fallbackLabel);
         if (!groups.has(label)) groups.set(label, []);
         groups.get(label).push(row);
       }
@@ -1282,7 +1286,7 @@
       els.sosrcCount.textContent = String(shownSosrc);
       els.langCount.textContent = String(shownLanguages);
       els.exceptionCount.textContent = String(
-        state.exceptionRows.length + state.photoExceptionRows.length + state.audioExceptionRows.length
+        state.exceptionRows.length + state.photoExceptionRows.length + state.calendarExceptionRows.length + state.audioExceptionRows.length
       );
     }
 
@@ -1809,6 +1813,13 @@
         { includeCentreDate: true, isBooks: false }
       );
 
+      addGroupedSheet(
+        workbook,
+        'CALENDAR',
+        buildGroupedMediaRows(state.calendarRows, 'calendar'),
+        { includeCentreDate: true, isBooks: false }
+      );
+
       const buffer = await workbook.xlsx.writeBuffer();
       return new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -1829,6 +1840,13 @@
         workbook,
         'PHOTOS',
         buildGroupedMediaRows(state.photoExceptionRows, 'photos'),
+        { includeCentreDate: false, isBooks: false }
+      );
+
+      addGroupedSheet(
+        workbook,
+        'CALENDAR',
+        buildGroupedMediaRows(state.calendarExceptionRows, 'calendar'),
         { includeCentreDate: false, isBooks: false }
       );
 
@@ -1875,12 +1893,17 @@
         mms: findColumn(first, ['Item Number (MMS)', 'ITEM NUMBER (MMS)', 'MMS Code', 'MMS CODE']),
         photoCode: findColumn(first, ['Photo code', 'PHOTO CODE']),
         title: findColumn(first, ['Item Details', 'ITEM DETAILS']),
+        oldLatest: findColumn(first, ['Old/Latest', 'OLD/LATEST', 'Old Latest']),
         shortCode: findColumn(first, ['Short Code', 'SHORT CODE']),
         photoType: findColumn(first, ['Photo type', 'PHOTO TYPE', 'Photo Type']),
         bavCode: findColumn(first, ['BAV Code', 'BAV CODE']),
         salePrice: findColumn(first, ['Sale Price (Rs.)', 'SALE PRICE (RS.)', 'Sale Price']),
         costPrice: findColumn(first, ['Cost Price (Rs.)', 'COST PRICE (RS.)', 'Cost Price'])
       };
+
+      if (!cols.oldLatest) {
+        throw new Error('Photos Master sheet is missing Old/Latest column.');
+      }
 
       const stockMap = new Set();
       if (stockRowsRaw.length) {
@@ -1898,13 +1921,16 @@
 
       const rows = masterRowsRaw
         .map((row, idx) => {
+          const oldLatest = normalizeKey(row[cols.oldLatest]);
+          if (oldLatest !== 'LATEST') return null;
+
           const mmsCode = normalizeMms(row[cols.mms]);
           const title = normalizeText(row[cols.title]);
           const displayCode = normalizeText(row[cols.bavCode] || row[cols.photoCode]);
           const shortCode = normalizeCode(row[cols.shortCode]) || toShortCode(row[cols.bavCode] || row[cols.photoCode]);
           const salePrice = normalizeNumber(row[cols.salePrice]);
           const costPrice = normalizeNumber(row[cols.costPrice]);
-          const category = canonicalPhotoCategory(row[cols.photoType]);
+          const category = normalizeText(row[cols.photoType]).toUpperCase() || 'PHOTOS';
 
           if (!shortCode && !displayCode && !title) return null;
 
@@ -1938,12 +1964,17 @@
         mms: findColumn(first, ['Item Number (MMS)', 'ITEM NUMBER (MMS)', 'MMS Code', 'MMS CODE']),
         bavCode: findColumn(first, ['BAV code', 'BAV CODE', 'BAV Code']),
         title: findColumn(first, ['Item Details', 'ITEM DETAILS']),
+        oldLatest: findColumn(first, ['Old/Latest', 'OLD/LATEST', 'Old Latest']),
         shortCode: findColumn(first, ['Short Code', 'SHORT CODE']),
         type: findColumn(first, ['Type', 'TYPE']),
         typeDescription: findColumn(first, ['Type Description', 'TYPE DESCRIPTION']),
         salePrice: findColumn(first, ['Sale Price (Rs.)', 'SALE PRICE (RS.)', 'Sale Price']),
         costPrice: findColumn(first, ['Cost Price (Rs.)', 'COST PRICE (RS.)', 'Cost Price'])
       };
+
+      if (!cols.oldLatest) {
+        throw new Error('Audio Master sheet is missing Old/Latest column.');
+      }
 
       const stockMap = new Set();
       if (stockRowsRaw.length) {
@@ -1961,13 +1992,19 @@
 
       const rows = masterRowsRaw
         .map((row, idx) => {
+          const oldLatest = normalizeKey(row[cols.oldLatest]);
+          if (oldLatest !== 'LATEST') return null;
+
           const mmsCode = normalizeMms(row[cols.mms]);
           const title = normalizeText(row[cols.title]);
           const displayCode = normalizeText(row[cols.bavCode]);
           const shortCode = normalizeCode(row[cols.shortCode]) || toShortCode(row[cols.bavCode]);
           const salePrice = normalizeNumber(row[cols.salePrice]);
           const costPrice = normalizeNumber(row[cols.costPrice]);
-          const category = canonicalAudioCategory(row[cols.typeDescription] || row[cols.type]);
+          const category = normalizeText(row[cols.typeDescription] || row[cols.type]).toUpperCase() || 'AUDIO';
+
+          // Exclude Spanish audio CDs from generated AUDIO and exception tabs.
+          if (normalizeKey(category).includes('SPANISH')) return null;
 
           if (!shortCode && !displayCode && !title) return null;
 
@@ -2101,12 +2138,14 @@
       }
 
       const previousPhotosSheetName = findSheetNameExactOrContains(previousIndentWb, 'PHOTOS', 'PHOTO');
+      const previousCalendarSheetName = findSheetNameExactOrContains(previousIndentWb, 'CALENDAR', 'CALENDAR');
       const previousAudioSheetName = findSheetNameExactOrContains(previousIndentWb, 'AUDIO', 'AUDIO');
 
       log(`Previous indent Books sheet used: ${previousBooksSheetName}`);
       const previousBooksRowsRaw = getPreviousIndentRows(previousIndentWb.Sheets[previousBooksSheetName]);
 
       let previousPhotoShortCodeSet = new Set();
+      let previousCalendarShortCodeSet = new Set();
       let previousAudioShortCodeSet = new Set();
 
       if (previousPhotosSheetName) {
@@ -2116,6 +2155,17 @@
         log(`Previous indent Photos short codes available: ${previousPhotoShortCodeSet.size}`);
       } else {
         log('No PHOTOS sheet found in Previous Indent file. Photos exception tab will show all generated photos as exceptions.');
+      }
+
+      if (previousCalendarSheetName) {
+        log(`Previous indent Calendar sheet used: ${previousCalendarSheetName}`);
+        const rows = getPreviousMediaRows(previousIndentWb.Sheets[previousCalendarSheetName], 'Calendar');
+        previousCalendarShortCodeSet = getShortCodeSetFromPreviousRows(rows);
+        log(`Previous indent Calendar short codes available: ${previousCalendarShortCodeSet.size}`);
+      } else {
+        // Older previous indents may still have Calendar inside PHOTOS, so use PHOTOS as fallback.
+        previousCalendarShortCodeSet = previousPhotoShortCodeSet;
+        log('No CALENDAR sheet found in Previous Indent file. Calendar exceptions will compare against previous PHOTOS tab as fallback.');
       }
 
       if (previousAudioSheetName) {
@@ -2294,8 +2344,20 @@
       );
 
       const photoProcessed = processPhotos(photoMasterRowsRaw, photoStockRowsRaw, previousPhotoShortCodeSet);
-      state.photoRows = photoProcessed.rows;
-      state.photoExceptionRows = photoProcessed.exceptions;
+
+      state.calendarRows = photoProcessed.rows.filter(row =>
+        normalizeKey(row.category) === 'CALENDAR'
+      );
+      state.photoRows = photoProcessed.rows.filter(row =>
+        normalizeKey(row.category) !== 'CALENDAR'
+      );
+
+      state.calendarExceptionRows = state.calendarRows.filter(row =>
+        row.shortCode && !previousCalendarShortCodeSet.has(row.shortCode)
+      );
+      state.photoExceptionRows = state.photoRows.filter(row =>
+        row.shortCode && !previousPhotoShortCodeSet.has(row.shortCode)
+      );
 
       const audioProcessed = processAudio(audioMasterRowsRaw, audioStockRowsRaw, previousAudioShortCodeSet);
       state.audioRows = audioProcessed.rows;
@@ -2312,14 +2374,16 @@
 
       setStatus('Preview ready');
       log(`Processed Books: ${processed.length}`);
-      log(`Processed Photos: ${state.photoRows.length}`);
-      log(`Processed Audio: ${state.audioRows.length}`);
+      log(`Processed Photos Latest rows only: ${state.photoRows.length}`);
+      log(`Processed Calendar Latest rows only: ${state.calendarRows.length}`);
+      log(`Processed Audio Latest rows only: ${state.audioRows.length}`);
       log(`Matched book stock rows: ${matchedStock}. SOSRC matches by identity: ${sosrcCount}.`);
       if (sosrcCount === 0) {
         log('No SOSRC matches found. Check that Book Master has an Identity column and SOSRC Book List column C has matching identities.', 'error');
       }
       log(`Book exception rows: ${state.exceptionRows.length}.`);
       log(`Photo exception rows: ${state.photoExceptionRows.length}.`);
+      log(`Calendar exception rows: ${state.calendarExceptionRows.length}.`);
       log(`Audio exception rows: ${state.audioExceptionRows.length}.`);
 
       els.downloadMainBtn.disabled = false;
@@ -2405,6 +2469,7 @@
       state.filteredRows = [];
       state.groupedRows = [];
       state.photoRows = [];
+      state.calendarRows = [];
       state.audioRows = [];
       state.mainWorkbookBlob = null;
       state.exceptionWorkbookBlob = null;
@@ -2414,6 +2479,7 @@
       state.languagesShown = 0;
       state.exceptionRows = [];
       state.photoExceptionRows = [];
+      state.calendarExceptionRows = [];
       state.audioExceptionRows = [];
 
       els.booksCount.textContent = '0';
