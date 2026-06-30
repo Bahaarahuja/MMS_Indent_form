@@ -792,10 +792,81 @@
     }
 
     function getSosrcRows(sheet) {
-      return getRowsByHeader(sheet, [
-        ['Short Code', 'SHORT CODE', 'Code', 'CODE'],
-        ['Book Name', 'BOOK NAME', 'Title', 'TITLE']
-      ], 20, 'Could not detect header row in SOSRC file.');
+      const matrix = getSheetMatrix(sheet);
+
+      return matrix
+        .slice(1)
+        .filter(row => row.some(cell => String(cell).trim() !== ''))
+        .map(row => ({
+          shortCode: row[0] ?? '',
+          marker: row[1] ?? '',
+          identity: row[2] ?? ''
+        }));
+    }
+
+    function normalizeIdentityPart(part) {
+      const text = String(part ?? '').trim().toUpperCase();
+      if (/^\d+$/.test(text)) {
+        return String(Number(text));
+      }
+      return text;
+    }
+
+    function identityVariants(value) {
+      const raw = normalizeCode(value)
+        .replace(/\s+/g, '')
+        .replace(/[–—]/g, '-');
+
+      const variants = new Set();
+      if (!raw) return variants;
+
+      variants.add(raw);
+
+      const parts = raw.split('-').filter(Boolean);
+      let identityParts = [];
+
+      // Full/short BAV pattern with language prefix, e.g. EN-052-0 or EN-052-0-01-05.
+      if (parts.length >= 3 && /^[A-Z]{2,4}$/.test(parts[0])) {
+        identityParts = [parts[1], parts[2]];
+      } else if (parts.length >= 2) {
+        // Identity already provided, e.g. 052-0 or 52-0.
+        identityParts = [parts[0], parts[1]];
+      }
+
+      if (identityParts.length) {
+        const exact = `${identityParts[0]}-${identityParts[1]}`.toUpperCase();
+        const noLeadingZeros = `${normalizeIdentityPart(identityParts[0])}-${normalizeIdentityPart(identityParts[1])}`.toUpperCase();
+
+        variants.add(exact);
+        variants.add(noLeadingZeros);
+
+        // Also add padded 3-digit version for cases like 52-0 vs 052-0.
+        if (/^\d+$/.test(normalizeIdentityPart(identityParts[0]))) {
+          const padded = `${normalizeIdentityPart(identityParts[0]).padStart(3, '0')}-${normalizeIdentityPart(identityParts[1])}`.toUpperCase();
+          variants.add(padded);
+        }
+      }
+
+      return variants;
+    }
+
+    function identityFromShortCode(value) {
+      return [...identityVariants(value)][0] || '';
+    }
+
+    function addIdentityVariantsToSet(set, value) {
+      for (const variant of identityVariants(value)) {
+        if (variant) set.add(variant);
+      }
+    }
+
+    function hasAnyIdentityVariant(set, ...values) {
+      for (const value of values) {
+        for (const variant of identityVariants(value)) {
+          if (set.has(variant)) return true;
+        }
+      }
+      return false;
     }
 
     function getPreviousIndentRows(sheet) {
@@ -1869,7 +1940,13 @@
 
       const masterSheet = masterWb.Sheets[masterWb.SheetNames[0]];
       const stockSheet = stockWb.Sheets[stockWb.SheetNames[0]];
-      const sosrcSheet = sosrcWb.Sheets[sosrcWb.SheetNames[0]];
+
+      const sosrcSheetName = findSheetNameExactOrContains(sosrcWb, 'SOSRC Book List', 'SOSRC');
+      if (!sosrcSheetName) {
+        throw new Error('Could not find sheet named "SOSRC Book List" in the SOSRC workbook.');
+      }
+      log(`SOSRC sheet used: ${sosrcSheetName}`);
+      const sosrcSheet = sosrcWb.Sheets[sosrcSheetName];
 
       const photoMasterSheetName = findSheetNameExactOrContains(photoMasterWb, 'Photos Master', 'PHOTO');
       if (!photoMasterSheetName) {
@@ -1967,6 +2044,7 @@
         mms: findColumn(masterFirst, ['MMS Code', 'MMS CODE']),
         bookName: findColumn(masterFirst, ['Book Name', 'TITLE', 'Title']),
         shortCode: findColumn(masterFirst, ['Short Code', 'SHORT CODE']),
+        identity: findColumn(masterFirst, ['Identity', 'IDENTITY', 'Book Identity', 'Book ID', 'ID']),
         bavCode: findColumn(masterFirst, ['BAV Code', 'BAV CODE', 'Code', 'CODE']),
         salePrice: findColumn(masterFirst, ['Sale Price(Rs.)', 'SALE PRICE', 'Sale Price']),
         costPrice: findColumn(masterFirst, ['Cost Price(Rs.)', 'COST PRICE', 'COST  PRICE', 'Cost Price'])
@@ -1983,11 +2061,6 @@
 
       const stockMmsCol = findColumn(stockFirst, ['MMS Code', 'MMS CODE']);
       if (!stockMmsCol) throw new Error('Books Stock file MMS Code column not found.');
-
-      const sosrcCols = {
-        shortCode: findColumn(sosrcFirst, ['Short Code', 'SHORT CODE', 'Code', 'CODE'])
-      };
-      if (!sosrcCols.shortCode) throw new Error('SOSRC file Short Code column not found.');
 
       const previousCodeCol = findColumn(previousFirst, ['CODE', 'Code']);
       if (!previousCodeCol) throw new Error('Previous Indent Books sheet CODE column not found.');
@@ -2007,10 +2080,22 @@
         vStockMap.set(mms, v);
       }
 
-      const sosrcShortCodeSet = new Set();
+      const sosrcIdentitySet = new Set();
       for (const row of sosrcRowsRaw) {
-        const shortCode = normalizeCode(row[sosrcCols.shortCode]);
-        if (shortCode) sosrcShortCodeSet.add(shortCode);
+        const marker = normalizeKey(row.marker);
+
+        // New SOSRC format:
+        // Row 1 is a title like "SOSRC Books".
+        // From row 2 onward: Column A = old short code, Column B = SOSRC marker, Column C = identity.
+        // We mark every Book Master row with the same Identity as SOSRC.
+        // Column C is the main match key. Column A is only a fallback.
+        if (!marker || marker === 'SOSRC' || marker.includes('SOSRC')) {
+          if (normalizeCode(row.identity)) {
+            addIdentityVariantsToSet(sosrcIdentitySet, row.identity);
+          } else {
+            addIdentityVariantsToSet(sosrcIdentitySet, row.shortCode);
+          }
+        }
       }
 
       const previousIndentShortCodeSet = new Set();
@@ -2020,7 +2105,10 @@
         if (prevShortCode) previousIndentShortCodeSet.add(prevShortCode);
       }
 
-      log(`SOSRC short codes available: ${sosrcShortCodeSet.size}`);
+      log(`SOSRC identities available: ${sosrcIdentitySet.size}`);
+      if (sosrcIdentitySet.size) {
+        log(`Sample SOSRC identities: ${[...sosrcIdentitySet].slice(0, 8).join(', ')}`);
+      }
       log(`Previous indent Books short codes available: ${previousIndentShortCodeSet.size}`);
 
       let matchedStock = 0;
@@ -2037,6 +2125,7 @@
           const bavCodeKey = normalizeCode(row[masterCols.bavCode]);
           const shortCodeFromFile = normalizeCode(row[masterCols.shortCode]);
           const shortCodeKey = shortCodeFromFile || toShortCode(bavCodeKey);
+          const identityValueFromMaster = row[masterCols.identity];
           const salePrice = normalizeNumber(row[masterCols.salePrice]);
           const costPrice = normalizeNumber(row[masterCols.costPrice]);
 
@@ -2046,7 +2135,15 @@
           const totalStock = totalStockMap.get(mmsCode) || 0;
           const vStock = vStockMap.get(mmsCode) || 0;
 
-          const isSosrc = sosrcShortCodeSet.has(shortCodeKey);
+          // SOSRC is now matched by Book Master Identity column.
+          // The SOSRC upload has identity in column C. If many Book Master rows share that identity,
+          // all of those rows are marked SOSRC, even if language/title/BAV code differ.
+          const isSosrc = hasAnyIdentityVariant(
+            sosrcIdentitySet,
+            identityValueFromMaster,
+            bavCodeKey,
+            shortCodeKey
+          );
           if (isSosrc) sosrcCount += 1;
 
           const isPriorityLang = priorityLangs.includes(language);
@@ -2123,7 +2220,10 @@
       log(`Processed Books: ${processed.length}`);
       log(`Processed Photos: ${state.photoRows.length}`);
       log(`Processed Audio: ${state.audioRows.length}`);
-      log(`Matched book stock rows: ${matchedStock}. SOSRC matches by short code: ${sosrcCount}.`);
+      log(`Matched book stock rows: ${matchedStock}. SOSRC matches by identity: ${sosrcCount}.`);
+      if (sosrcCount === 0) {
+        log('No SOSRC matches found. Check that Book Master has an Identity column and SOSRC Book List column C has matching identities.', 'error');
+      }
       log(`Book exception rows: ${state.exceptionRows.length}.`);
       log(`Photo exception rows: ${state.photoExceptionRows.length}.`);
       log(`Audio exception rows: ${state.audioExceptionRows.length}.`);
