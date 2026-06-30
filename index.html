@@ -73,11 +73,27 @@
     }
 
     .upload-box {
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: white;
-      padding: 14px;
+      border: 1px solid #d6d9df;
+      border-radius: 16px;
+      padding: 16px;
+      transition: all 0.25s ease;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+      position: relative;
     }
+
+    .upload-box:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    .upload-box.books-master { background: #EAF4FF; }
+    .upload-box.books-stock { background: #DDF0FF; }
+    .upload-box.sosrc { background: #EAF8EF; }
+    .upload-box.previous-indent { background: #FFF7D8; }
+    .upload-box.photos-master { background: #FFEFF5; }
+    .upload-box.photos-stock { background: #FFE4EF; }
+    .upload-box.audio-master { background: #F1ECFF; }
+    .upload-box.audio-stock { background: #E8E0FF; }
 
     .upload-box label,
     .toolbar-filter label {
@@ -413,6 +429,54 @@
       .stats { grid-template-columns: 1fr 1fr; }
       .toolbar-right { width: 100%; }
     }
+
+
+
+    /* Softer earth-tone upload-card colors: stock cards are one shade darker than master cards */
+    .upload-box {
+      border: 1px solid #d8d2c6 !important;
+      border-radius: 16px !important;
+      padding: 16px !important;
+      box-shadow: 0 2px 8px rgba(17, 24, 39, 0.04) !important;
+    }
+
+    .upload-box label {
+      font-weight: 900 !important;
+      color: #1f2937 !important;
+      letter-spacing: .045em !important;
+      font-size: 12px !important;
+    }
+
+    .upload-box.books-master { background: #eaf3f7 !important; }  /* light blue */
+    .upload-box.books-stock { background: #dcecf2 !important; }   /* one shade darker blue */
+
+    .upload-box.sosrc { background: #edf5e8 !important; }         /* light green */
+    .upload-box.previous,
+    .upload-box.previous-indent { background: #f8f1d8 !important; } /* light yellow */
+
+    .upload-box.photo-master,
+    .upload-box.photos-master { background: #faeadc !important; } /* light peach */
+    .upload-box.photo-stock,
+    .upload-box.photos-stock { background: #f3ddc6 !important; }  /* one shade darker peach */
+
+    .upload-box.audio-master { background: #eef6ec !important; }  /* light green */
+    .upload-box.audio-stock { background: #dfeeda !important; }   /* one shade darker green */
+
+    .upload-box input[type="file"] {
+      background: rgba(255, 255, 255, 0.74) !important;
+      border-color: #d4d4d4 !important;
+    }
+
+
+    .data-row.gray-row .qty-cell input,
+    .qty-cell input:disabled {
+      background: var(--excel-gray) !important;
+      color: #6b7280 !important;
+      cursor: not-allowed !important;
+      border-color: #8b9098 !important;
+      opacity: 1 !important;
+    }
+
   </style>
 </head>
 <body>
@@ -420,37 +484,37 @@
     <section class="top-card">
       <div class="subcard">
         <div class="upload-grid">
-          <div class="upload-box">
-            <label for="masterFile">Books Master</label>
+          <div class="upload-box books-master">
+            <label for="masterFile">BOOKS MASTER</label>
             <input id="masterFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           </div>
-          <div class="upload-box">
-            <label for="stockFile">Books Stock Position</label>
+          <div class="upload-box books-stock">
+            <label for="stockFile">BOOKS STOCK POSITION</label>
             <input id="stockFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           </div>
-          <div class="upload-box">
-            <label for="sosrcFile">SOSRC File</label>
+          <div class="upload-box sosrc">
+            <label for="sosrcFile">SOSRC BOOK LIST</label>
             <input id="sosrcFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           </div>
-          <div class="upload-box">
-            <label for="previousIndentFile">Previous Indent</label>
+          <div class="upload-box previous-indent">
+            <label for="previousIndentFile">PREVIOUS INDENT</label>
             <input id="previousIndentFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           </div>
 
-          <div class="upload-box">
-            <label for="photoMasterFile">Photos Master Workbook</label>
+          <div class="upload-box photos-master">
+            <label for="photoMasterFile">PHOTOS MASTER Workbook</label>
             <input id="photoMasterFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           </div>
-          <div class="upload-box">
-            <label for="photoStockFile">Photos Stock Position</label>
+          <div class="upload-box photos-stock">
+            <label for="photoStockFile">PHOTOS STOCK POSITION</label>
             <input id="photoStockFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           </div>
-          <div class="upload-box">
-            <label for="audioMasterFile">Audio Master Workbook</label>
+          <div class="upload-box audio-master">
+            <label for="audioMasterFile">AUDIO MASTER Workbook</label>
             <input id="audioMasterFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           </div>
-          <div class="upload-box">
-            <label for="audioStockFile">Audio Stock Position</label>
+          <div class="upload-box audio-stock">
+            <label for="audioStockFile">AUDIO STOCK POSITION</label>
             <input id="audioStockFile" type="file" accept=".xlsx,.xls,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           </div>
         </div>
@@ -1291,7 +1355,7 @@
                 <td class="mms-cell">${escapeHtml(row.mmsCode)}</td>
                 <td class="title-cell">${escapeHtml(row.title)}</td>
                 <td><div class="remarks-text">${formatRemarkHtml(row.remarks)}</div></td>
-                <td class="qty-cell"><input type="number" min="0" step="1" value="${Number(row.qty) || ''}" data-qty-input="${escapeHtml(row.id)}"></td>
+                <td class="qty-cell"><input type="number" min="0" step="1" value="${row.isGrayStock ? '' : (Number(row.qty) || '')}" data-qty-input="${escapeHtml(row.id)}" ${row.isGrayStock ? 'disabled title="Out of Stock - quantity cannot be entered"' : ''}></td>
                 <td>${currency(row.salePrice)}</td>
                 <td>${currency(row.costPrice)}</td>
                 <td data-sale-amount="${escapeHtml(row.id)}">${currency(saleAmount)}</td>
@@ -1309,10 +1373,18 @@
           const row = state.rows.find(r => r.id === id);
           if (!row) return;
 
-          row.qty = qty;
-
           const saleCell = table.querySelector(`[data-sale-amount="${CSS.escape(id)}"]`);
           const costCell = table.querySelector(`[data-cost-amount="${CSS.escape(id)}"]`);
+
+          if (row.isGrayStock) {
+            row.qty = 0;
+            event.target.value = '';
+            if (saleCell) saleCell.textContent = currency(0);
+            if (costCell) costCell.textContent = currency(0);
+            return;
+          }
+
+          row.qty = qty;
 
           if (saleCell) saleCell.textContent = currency(qty * row.salePrice);
           if (costCell) costCell.textContent = currency(qty * row.costPrice);
@@ -1368,6 +1440,13 @@
         const isQtyCell = cell.col === 5;
         const cellFill = isQtyCell && !item.isGrayStock ? 'FFFFFFFF' : fillArgb;
         addCellStyle(cell, cellFill, false, cell.col === 3 || cell.col === 4 ? 'left' : 'center', true);
+
+        if (isQtyCell) {
+          cell.protection = { locked: !!item.isGrayStock };
+        } else {
+          cell.protection = { locked: false };
+        }
+
         if (cell.col === 3 || cell.col === 4) {
           cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
         }
@@ -1448,7 +1527,7 @@
         row.getCell(2).value = item.mmsCode || '';
         row.getCell(3).value = item.title;
         row.getCell(4).value = item.remarks || '';
-        row.getCell(5).value = Number(item.qty) || null;
+        row.getCell(5).value = item.isGrayStock ? null : (Number(item.qty) || null);
         row.getCell(6).value = item.salePrice;
         row.getCell(7).value = item.costPrice;
         row.getCell(8).value = { formula: `E${rowNum}*F${rowNum}` };
@@ -1461,6 +1540,21 @@
       }
 
       ws.views = [{ state: 'frozen', ySplit: includeCentreDate ? 2 : 1 }];
+
+      // Protect sheet so only Out of Stock Qty cells are blocked.
+      // All other cells are unlocked above, so users can still fill normal Qty cells.
+      ws.protect('', {
+        selectLockedCells: true,
+        selectUnlockedCells: true,
+        formatCells: true,
+        formatColumns: true,
+        formatRows: true,
+        insertRows: true,
+        deleteRows: true,
+        sort: true,
+        autoFilter: true
+      });
+
       return ws;
     }
 
