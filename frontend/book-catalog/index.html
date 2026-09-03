@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Book Catalog · MMS Status Circular</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body data-page="report">
+<div class="app-shell">
+<aside class="sidebar" id="sidebar">
+  <div class="brand-row">
+    <a class="brand brand-link" href="../start.html" title="Go to Publishing Workspace">
+      <div class="brand-copy"><div class="brand-title">MMS Status Circular</div><div class="brand-subtitle">Report & Indent System</div></div>
+    </a>
+    <button class="sidebar-menu-button" id="sidebarToggle" type="button" aria-label="Open or close menu" title="Open / close menu">☰</button>
+  </div>
+  <nav>
+    <div class="nav-section">Workspace</div>
+    <a class="nav-item" href="../start.html">Dashboard</a>
+    <div class="nav-section">Create</div>
+    <a class="nav-item" href="../new-releases/index.html">New Releases</a>
+    <a class="nav-item active" href="../book-catalog/index.html">Book Catalog</a>
+    <a class="nav-item" href="../out-of-stock/index.html">Out of Stock Books</a>
+    <a class="nav-item" href="../mms-indent/index.html">MMS Indent</a>
+    <div class="nav-section">Manage</div>
+    <a class="nav-item" href="../database/index.html">Data Sources</a>
+    <a class="nav-item" href="../history/index.html">Report History</a>
+  </nav>
+  <div class="sidebar-footer"><span class="readonly-dot"></span>Google Drive: read only</div>
+</aside>
+  <main class="main">
+    <header class="topbar"><div class="page-heading catalog-breadcrumbs" id="catalogBreadcrumbs"><button type="button" onclick="showCatalogChooser()">Book Catalog</button></div><div class="topbar-right"><span class="sync-pill">PDF builder</span></div></header>
+    <section class="content">
+      <section class="catalog-entry panel catalog-page-panel" id="catalogEntry">
+        <p class="catalog-lede">Create and download a book catalog PDF.</p>
+        <h2>Start or continue</h2>
+        <div class="catalog-choice-grid">
+          <button class="catalog-choice" type="button" onclick="chooseNewCatalog()">
+            <span class="choice-mark">+</span>
+            <strong>Start a new catalog</strong>
+            <small>Begin a fresh catalog.</small>
+          </button>
+          <button class="catalog-choice" type="button" onclick="showCatalogDrafts()">
+            <span class="choice-mark">↻</span>
+            <strong>Continue a draft <b id="catalogDraftCount">0</b></strong>
+            <small id="catalogDraftHint">Open an unfinished catalog.</small>
+          </button>
+        </div>
+      </section>
+      <section class="catalog-drafts-panel panel catalog-page-panel hidden" id="catalogDraftListPanel">
+        <h2>Choose a draft</h2>
+        <p class="muted">Select the catalog you want to continue.</p>
+        <div class="catalog-draft-list" id="catalogDraftList"></div>
+      </section>
+      <section class="catalog-workspace catalog-page-panel hidden" id="catalogWorkspace">
+      <div class="report-controls-card">
+  <div class="report-controls-top"><div><div class="eyebrow">Catalog details</div><p class="muted">Set the issue context first, then build the catalog with covers and descriptions that are ready for PDF output.</p></div></div>
+  <div class="control-grid"><label>Market<select id="market"><option value="INDIAN">Indian</option><option value="OVERSEAS">Overseas / Foreign</option></select></label><label>Month<select id="month"></select></label><label>Year<input id="year" type="number" min="2000" max="2100"></label><label>PDF File Name<input id="pdfFileName" type="text" maxlength="120" placeholder="Example: Book Catalog - January 2026"></label></div>
+  <div class="alert error hidden" id="missingAlert"></div>
+</div>
+<div id="draftRecoveryPanel"></div>
+	<div id="reportMessage"></div>
+<div id="editorShell" class="editor-shell">
+  <div class="editor-toolbar catalog-editor-toolbar"><h2>Books</h2><div class="catalog-toolbar-actions"><div class="autosave-note" id="autosaveStatus">Autosave ready</div><div class="catalog-list-actions">
+    <button class="icon-btn" id="undoBtn" type="button" title="Undo" aria-label="Undo" onclick="undoAction()" disabled>↶</button>
+    <button class="icon-btn" id="redoBtn" type="button" title="Redo" aria-label="Redo" onclick="redoAction()" disabled>↷</button>
+    <button class="btn secondary danger-outline" id="removeSelectedBtn" type="button" onclick="deleteSelected()">Remove Selected</button>
+  </div></div></div>
+  <section class="catalog-search-card">
+    <div class="catalog-search-heading"><strong>Search books</strong><span>Total books added: <b id="catalogTotalBooks">0</b></span></div>
+    <div class="catalog-quick-add-controls">
+      <label class="catalog-quick-code"><span>BAV code</span><span class="catalog-quick-search"><input id="catalogQuickCode" type="text" maxlength="40" placeholder="Start typing BAV code" autocomplete="off" oninput="searchQuickCatalogCode(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();addCatalogBookFromQuickEntry()}"><span class="quick-code-suggestions hidden" id="catalogQuickSuggestions"></span></span></label>
+      <button class="btn primary" type="button" onclick="addCatalogBookFromQuickEntry()">Add by Code</button>
+      <button class="btn secondary" type="button" onclick="addBlankRow()">Add Blank</button>
+    </div>
+  </section>
+  <div id="logicNotice"></div><div id="editor"></div><div id="validationArea" class="validation-area hidden"></div>
+  <div class="catalog-finalize-bar"><button class="btn secondary" onclick="saveCatalogDraft()">Save as Draft</button><button class="btn secondary preview-btn" onclick="previewPdf()">Preview PDF</button><button class="btn primary download-btn" onclick="downloadFinal()" disabled>Finalize & Download PDF</button></div>
+  <details class="changes-panel audit-drawer"><summary>Audit trail</summary><div id="changesList" class="changes-list">No manual changes yet.</div></details>
+</div>
+      </section>
+<div id="confirmModal" class="modal hidden"><div class="modal-card confirm-card"><div class="modal-header"><h3>Code not found in Book Master</h3><button class="icon-btn" onclick="answerInvalidCode(false)">×</button></div><p id="confirmMessage"></p><div class="button-row"><button class="btn secondary" onclick="answerInvalidCode(false)">No — clear the code</button><button class="btn primary" onclick="answerInvalidCode(true)">Yes — keep it anyway</button></div></div></div>
+<div id="duplicateModal" class="modal hidden"><div class="modal-card confirm-card"><div class="modal-header"><h3>Book already in this report</h3><button class="icon-btn" onclick="closeDuplicateModal()">×</button></div><p id="duplicateMessage"></p><div class="button-row"><button class="btn secondary" onclick="answerDuplicate(false)">No — do not add again</button><button class="btn primary" onclick="answerDuplicate(true)">Yes — add again</button></div></div></div>
+    </section>
+  </main>
+</div>
+<script src="../js/config.js"></script>
+<script src="../js/app.js"></script>
+<script src="../js/pages.js"></script>
+<script>
+window.REPORT_TYPE = 'book-catalog';
+window.REPORT_LABEL = 'Book Catalog';
+</script>
+<script src="../js/report.js"></script>
+</body>
+</html>

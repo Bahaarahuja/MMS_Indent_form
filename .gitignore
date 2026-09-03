@@ -1,0 +1,26 @@
+# macOS and editor files
+.DS_Store
+.vscode/
+
+# Python environments and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Local configuration and dependencies
+.env
+.env.*
+node_modules/
+
+# Application data generated on this machine
+data/mms_system.sqlite3
+data/source_files/
+data/reports/
+output/
+tmp/
+
+# Timestamped local recovery copies
+*.backup-*

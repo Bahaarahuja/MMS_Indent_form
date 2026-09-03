@@ -1,9 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MMS Indent Builder</title>
+  <link rel="stylesheet" href="../css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -12,16 +14,17 @@
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <style>
     :root {
-      --bg: #f7f8fa;
+      --bg: #f7f6f1;
       --panel: #ffffff;
-      --panel-2: #fbfbfc;
-      --line: #e5e7eb;
-      --line-2: #d1d5db;
-      --text: #111827;
-      --muted: #6b7280;
-      --accent: #1d4ed8;
-      --shadow: 0 12px 40px rgba(17, 24, 39, 0.06);
-      --radius: 18px;
+      --panel-2: #fbfaf6;
+      --line: #dfe3de;
+      --line-2: #cfd7d1;
+      --text: #17211d;
+      --muted: #657069;
+      --accent: #5f7e6d;
+      --accent-dark: #4d685a;
+      --shadow: 0 8px 28px rgba(32, 45, 38, 0.06);
+      --radius: 12px;
 
       --excel-header: #d8ffff;
       --excel-group: #00008b;
@@ -41,7 +44,7 @@
       margin: 0;
       background: var(--bg);
       color: var(--text);
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Arial, sans-serif;
     }
 
     .shell {
@@ -53,17 +56,23 @@
     .preview-card {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 20px;
+      border-radius: 12px;
       box-shadow: var(--shadow);
     }
 
-    .top-card { padding: 18px; }
+    .top-card {
+      padding: 0;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+    }
 
     .subcard {
       border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--panel-2);
+      border-radius: 12px;
+      background: var(--panel);
       padding: 18px;
+      box-shadow: var(--shadow);
     }
 
     .upload-grid {
@@ -73,27 +82,27 @@
     }
 
     .upload-box {
-      border: 1px solid #d6d9df;
-      border-radius: 16px;
-      padding: 16px;
-      transition: all 0.25s ease;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+      transition: border-color .15s ease, box-shadow .15s ease;
+      box-shadow: none;
       position: relative;
     }
 
     .upload-box:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+      border-color: #bfcac2;
+      box-shadow: 0 6px 18px rgba(32, 45, 38, 0.06);
     }
 
-    .upload-box.books-master { background: #EAF4FF; }
-    .upload-box.books-stock { background: #DDF0FF; }
-    .upload-box.sosrc { background: #EAF8EF; }
-    .upload-box.previous-indent { background: #FFF7D8; }
-    .upload-box.photos-master { background: #FFEFF5; }
-    .upload-box.photos-stock { background: #FFE4EF; }
-    .upload-box.audio-master { background: #F1ECFF; }
-    .upload-box.audio-stock { background: #E8E0FF; }
+    .upload-box.books-master { background: #eaf3f7; }
+    .upload-box.books-stock { background: #dcecf2; }
+    .upload-box.sosrc { background: #edf4e8; }
+    .upload-box.previous-indent { background: #f7f2d9; }
+    .upload-box.photos-master { background: #f6eadf; }
+    .upload-box.photos-stock { background: #eee0d1; }
+    .upload-box.audio-master { background: #edf4e8; }
+    .upload-box.audio-stock { background: #dfeeda; }
 
     .upload-box label,
     .toolbar-filter label {
@@ -115,7 +124,7 @@
       color: var(--text);
       background: white;
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 9px;
       outline: none;
     }
 
@@ -128,7 +137,7 @@
 
     .stat {
       border: 1px solid var(--line);
-      border-radius: 14px;
+      border-radius: 10px;
       background: white;
       padding: 14px;
     }
@@ -165,19 +174,20 @@
       font-weight: 600;
       font-size: 14px;
       padding: 11px 16px;
-      border-radius: 12px;
+      border-radius: 10px;
       cursor: pointer;
       transition: .15s ease;
       white-space: nowrap;
     }
 
-    button:hover { transform: translateY(-1px); }
+    button:hover { filter: brightness(.98); }
     button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 
     .btn-primary {
       background: var(--accent);
       color: white;
       border-color: var(--accent);
+      box-shadow: 0 4px 12px rgba(50, 80, 65, .12);
     }
 
     .btn-secondary {
@@ -399,7 +409,7 @@
     .log {
       margin-top: 14px;
       border: 1px solid var(--line);
-      border-radius: 14px;
+      border-radius: 10px;
       background: white;
       padding: 12px 14px;
       max-height: 180px;
@@ -425,7 +435,7 @@
 
     @media (max-width: 640px) {
       .shell { width: min(100% - 16px, 1440px); margin: 16px auto 20px; }
-      .top-card { padding: 18px; }
+      .top-card { padding: 0; }
       .stats { grid-template-columns: 1fr 1fr; }
       .toolbar-right { width: 100%; }
     }
@@ -434,15 +444,15 @@
 
     /* Softer earth-tone upload-card colors: stock cards are one shade darker than master cards */
     .upload-box {
-      border: 1px solid #d8d2c6 !important;
-      border-radius: 16px !important;
-      padding: 16px !important;
-      box-shadow: 0 2px 8px rgba(17, 24, 39, 0.04) !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 10px !important;
+      padding: 14px !important;
+      box-shadow: none !important;
     }
 
     .upload-box label {
-      font-weight: 900 !important;
-      color: #1f2937 !important;
+      font-weight: 850 !important;
+      color: #43574c !important;
       letter-spacing: .045em !important;
       font-size: 12px !important;
     }
@@ -450,14 +460,14 @@
     .upload-box.books-master { background: #eaf3f7 !important; }  /* light blue */
     .upload-box.books-stock { background: #dcecf2 !important; }   /* one shade darker blue */
 
-    .upload-box.sosrc { background: #edf5e8 !important; }         /* light green */
+    .upload-box.sosrc { background: #edf4e8 !important; }         /* light green */
     .upload-box.previous,
     .upload-box.previous-indent { background: #f8f1d8 !important; } /* light yellow */
 
     .upload-box.photo-master,
     .upload-box.photos-master { background: #faeadc !important; } /* light peach */
     .upload-box.photo-stock,
-    .upload-box.photos-stock { background: #f3ddc6 !important; }  /* one shade darker peach */
+    .upload-box.photos-stock { background: #eee0d1 !important; }  /* one shade darker peach */
 
     .upload-box.audio-master { background: #eef6ec !important; }  /* light green */
     .upload-box.audio-stock { background: #dfeeda !important; }   /* one shade darker green */
@@ -481,9 +491,9 @@
 
     .indent-type-box {
       margin-top: 14px;
-      border: 1px solid #d8d2c6;
-      border-radius: 16px;
-      background: #f6f1e6;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel-2);
       padding: 14px 16px;
       display: grid;
       grid-template-columns: 220px minmax(240px, 420px);
@@ -493,9 +503,9 @@
 
     .indent-type-box label {
       display: block;
-      font-weight: 900;
+      font-weight: 850;
       font-size: 12px;
-      color: #1f2937;
+      color: #43574c;
       text-transform: uppercase;
       letter-spacing: .045em;
       margin-bottom: 0;
@@ -513,15 +523,26 @@
 
 
     .btn-guide {
-      background: #5f7f70;
-      color: #ffffff;
-      border-color: #5f7f70;
-      box-shadow: 0 3px 10px rgba(95, 127, 112, 0.18);
+      background: #e7f0e9;
+      color: #28463a;
+      border-color: #c9d9ce;
+      box-shadow: none;
     }
 
     .btn-guide:hover {
-      background: #526f62;
-      border-color: #526f62;
+      background: #dfeade;
+      border-color: #b7cbbb;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dark);
+      border-color: var(--accent-dark);
+    }
+
+    .documentation-download {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
     }
 
     .documentation-modal {
@@ -541,10 +562,10 @@
       width: min(920px, 100%);
       max-height: 90vh;
       overflow: hidden;
-      border-radius: 18px;
+      border-radius: 12px;
       background: #ffffff;
       box-shadow: 0 24px 70px rgba(15, 23, 42, 0.25);
-      border: 1px solid #d9dee7;
+      border: 1px solid var(--line);
     }
 
     .documentation-header {
@@ -553,8 +574,8 @@
       justify-content: space-between;
       gap: 12px;
       padding: 16px 18px;
-      border-bottom: 1px solid #e5e7eb;
-      background: #f8fafc;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel-2);
     }
 
     .documentation-header h3 { margin: 0; font-size: 18px; }
@@ -563,8 +584,8 @@
       width: 38px;
       height: 38px;
       padding: 0;
-      border: 1px solid #d1d5db;
-      border-radius: 10px;
+      border: 1px solid var(--line-2);
+      border-radius: 9px;
       font-size: 22px;
       line-height: 1;
     }
@@ -573,20 +594,20 @@
       display: flex;
       gap: 8px;
       padding: 12px 18px 0;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid var(--line);
     }
 
     .documentation-tab {
-      border: 1px solid #d1d5db;
+      border: 1px solid var(--line-2);
       border-bottom: none;
-      border-radius: 10px 10px 0 0;
+      border-radius: 9px 9px 0 0;
       padding: 9px 16px;
-      background: #f3f4f6;
+      background: var(--panel-2);
     }
 
     .documentation-tab.active {
       background: #ffffff;
-      color: #1d4ed8;
+      color: #2f5a46;
       font-weight: 800;
     }
 
@@ -599,7 +620,7 @@
 
     .documentation-panel { display: none; }
     .documentation-panel.active { display: block; }
-    .documentation-panel h4 { margin: 18px 0 6px; color: #1f4e78; }
+    .documentation-panel h4 { margin: 18px 0 6px; color: #2f5a46; }
     .documentation-panel h4:first-child { margin-top: 0; }
     .documentation-panel ul { margin: 6px 0 12px 22px; padding: 0; }
     .documentation-panel li { margin-bottom: 5px; }
@@ -609,8 +630,8 @@
       align-items: center;
       margin-top: 10px;
       padding: 10px 14px;
-      border-radius: 10px;
-      background: #1d4ed8;
+      border-radius: 9px;
+      background: var(--accent);
       color: #ffffff;
       text-decoration: none;
       font-weight: 700;
@@ -621,8 +642,8 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid #8fa88f;
-      background: #dfead9;
+      border: 1px solid #c9d9ce;
+      background: #e7f0e9;
       color: #1f3b2b;
       font-weight: 800;
       text-decoration: none;
@@ -633,12 +654,160 @@
       background: #d3e2cc;
     }
 
+    .mms-indent-content {
+      max-width: none;
+      width: 100%;
+      padding: 24px 28px 44px;
+    }
+
+    .mms-indent-content .shell {
+      width: 100%;
+      margin: 0;
+    }
+
+    .mms-indent-content .top-card,
+    .mms-indent-content .preview-card {
+      border-radius: 12px;
+    }
+
+    .mms-setup-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
+      gap: 16px;
+      margin-bottom: 16px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel-2);
+    }
+
+    .mms-setup-panel h2 {
+      margin: 4px 0 6px;
+      font-size: 20px;
+    }
+
+    .mms-setup-panel p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .mms-checklist {
+      display: grid;
+      gap: 8px;
+    }
+
+    .mms-check-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--panel-2);
+      color: #43574c;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .mms-check-item.optional {
+      color: #6b7280;
+    }
+
+    .mms-check-item.done {
+      background: #e7f2ea;
+      border-color: #bfdfc9;
+      color: #2f6b4c;
+    }
+
+    .mms-check-item span:last-child {
+      white-space: nowrap;
+    }
+
+    .upload-box.not-required {
+      opacity: .58;
+    }
+
+    @media (max-width: 900px) {
+      .mms-indent-content {
+        padding: 18px 14px 36px;
+      }
+
+      .mms-setup-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .mms-indent-content .subcard {
+        padding: 14px;
+      }
+
+      .mms-indent-content .actions button,
+      .mms-indent-content .toolbar-right,
+      .mms-indent-content .toolbar-right .status {
+        width: 100%;
+      }
+
+      .mms-indent-content .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .mms-indent-content .table-wrap {
+        min-height: 420px;
+        height: 62vh;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .mms-indent-content {
+        padding: 14px 10px 30px;
+      }
+
+      .mms-indent-content .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .mms-indent-content .preview-toolbar {
+        padding: 14px;
+      }
+    }
+
   </style>
 </head>
-<body>
+<body data-page="mms-indent">
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-row">
+        <a class="brand brand-link" href="../start.html" title="Go to Publishing Workspace">
+          <div class="brand-copy"><div class="brand-title">MMS Status Circular</div><div class="brand-subtitle">Report & Indent System</div></div>
+        </a>
+        <button class="sidebar-menu-button" id="sidebarToggle" type="button" aria-label="Open or close menu" title="Open / close menu">☰</button>
+      </div>
+      <nav>
+        <div class="nav-section">Workspace</div>
+        <a class="nav-item" href="../start.html">Dashboard</a>
+        <div class="nav-section">Create</div>
+        <a class="nav-item" href="../new-releases/index.html">New Releases</a>
+        <a class="nav-item" href="../book-catalog/index.html">Book Catalog</a>
+        <a class="nav-item" href="../out-of-stock/index.html">Out of Stock Books</a>
+        <a class="nav-item active" href="../mms-indent/index.html">MMS Indent</a>
+        <div class="nav-section">Manage</div>
+        <a class="nav-item" href="../database/index.html">Data Sources</a>
+        <a class="nav-item" href="../history/index.html">Report History</a>
+      </nav>
+      <div class="sidebar-footer"><span class="readonly-dot"></span>Google Drive: read only</div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div class="page-heading">MMS Indent</div><div class="topbar-right"><span class="sync-pill">Excel builder</span></div></header>
+      <section class="content mms-indent-content">
   <div class="shell">
     <section class="top-card">
       <div class="subcard">
+        <div class="mms-setup-panel">
+          <div>
+            <div class="eyebrow">Excel indent builder</div>
+            <h2>Upload the required workbooks, then build the preview.</h2>
+            <p>MMS Indent uses Books, SOSRC, Previous Indent, Photos, and Audio. Overseas Indent skips Photos and Calendar output.</p>
+          </div>
+        </div>
         <div class="upload-grid">
           <div class="upload-box books-master">
             <label for="masterFile">BOOKS MASTER</label>
@@ -781,6 +950,9 @@
       </div>
     </section>
   </div>
+      </section>
+    </main>
+  </div>
 
   
 
@@ -887,6 +1059,8 @@
   </div>
 
 
+  <script src="../js/config.js"></script>
+  <script src="../js/app.js"></script>
   <script>
     // The guide PDF is embedded directly inside this HTML file.
     // This avoids broken relative links on localhost, GitHub Pages, Safari, and Chrome.
@@ -960,7 +1134,8 @@
       photoExceptionRows: [],
       calendarExceptionRows: [],
       audioExceptionRows: [],
-      indentType: 'MMS'
+      indentType: 'MMS',
+      archiveReportId: null
     };
 
     const els = {
@@ -995,6 +1170,24 @@
       langCount: document.getElementById('langCount'),
       exceptionCount: document.getElementById('exceptionCount')
     };
+
+    function refreshMmsUploadChecklist() {
+      const isOverseas = (els.indentType.value || 'MMS') === 'OVERSEAS';
+      document.querySelectorAll('[data-check-key]').forEach(item => {
+        const key = item.getAttribute('data-check-key');
+        const input = els[key];
+        const mmsOnly = item.hasAttribute('data-mms-only');
+        const skipped = isOverseas && mmsOnly;
+        const done = skipped || Boolean(input && input.files && input.files[0]);
+        item.classList.toggle('done', done);
+        item.classList.toggle('optional', skipped);
+        item.querySelector('span:last-child').textContent = skipped ? 'Skipped' : (done ? 'Ready' : (mmsOnly ? 'MMS only' : 'Needed'));
+      });
+
+      [els.photoMasterFile, els.photoStockFile].forEach(input => {
+        input?.closest('.upload-box')?.classList.toggle('not-required', isOverseas);
+      });
+    }
 
     function log(message, type = 'info') {
       const stamp = new Date().toLocaleTimeString();
@@ -2905,12 +3098,26 @@
       }
     });
 
+    async function archiveIndentBlob(blob, fileName, kind) {
+      try {
+        const form = new FormData();
+        form.append('file', blob, fileName);
+        form.append('kind', kind);
+        form.append('market', state.indentType);
+        if (state.archiveReportId) form.append('report_id', state.archiveReportId);
+        const res = await fetch(apiUrl('/api/mms-indent/archive'), { method: 'POST', body: form });
+        const data = await res.json();
+        if (res.ok && data.ok && data.report_id) state.archiveReportId = data.report_id;
+      } catch (e) { console.warn('Could not archive indent history', e); }
+    }
+
     els.downloadMainBtn.addEventListener('click', async () => {
       try {
         setStatus('Preparing main file; copying Instructions and ORDER Summary');
         state.mainWorkbookBlob = await buildMainWorkbookBlob();
         const mainFileName = state.indentType === 'OVERSEAS' ? 'Overseas_Indent_Output.xlsx' : 'MMS_Indent_Output.xlsx';
         saveAs(state.mainWorkbookBlob, mainFileName);
+        await archiveIndentBlob(state.mainWorkbookBlob, mainFileName, 'main');
         setStatus('Main file downloaded');
         log('Main Excel file downloaded.');
       } catch (error) {
@@ -2927,6 +3134,7 @@
         state.exceptionWorkbookBlob = await buildExceptionWorkbookBlob();
         const exceptionFileName = state.indentType === 'OVERSEAS' ? 'Overseas_Exception_List.xlsx' : 'MMS_Exception_List.xlsx';
         saveAs(state.exceptionWorkbookBlob, exceptionFileName);
+        await archiveIndentBlob(state.exceptionWorkbookBlob, exceptionFileName, 'exception');
         setStatus('Exception file downloaded');
         log('Exception Excel file downloaded.');
       } catch (error) {
@@ -2995,8 +3203,17 @@
       });
     });
 
-    els.indentType.addEventListener('change', updateDocumentationVisibility);
+    [
+      els.masterFile, els.stockFile, els.sosrcFile, els.previousIndentFile,
+      els.photoMasterFile, els.photoStockFile, els.audioMasterFile, els.audioStockFile
+    ].forEach(input => input.addEventListener('change', refreshMmsUploadChecklist));
+
+    els.indentType.addEventListener('change', () => {
+      updateDocumentationVisibility();
+      refreshMmsUploadChecklist();
+    });
     updateDocumentationVisibility();
+    refreshMmsUploadChecklist();
 
     els.resetBtn.addEventListener('click', () => {
       els.masterFile.value = '';
@@ -3005,6 +3222,7 @@
       els.previousIndentFile.value = '';
       els.indentType.value = 'MMS';
       updateDocumentationVisibility();
+      refreshMmsUploadChecklist();
       els.photoMasterFile.value = '';
       els.photoStockFile.value = '';
       els.audioMasterFile.value = '';
@@ -3045,6 +3263,7 @@
       els.downloadMainBtn.disabled = true;
       els.downloadExceptionBtn.disabled = true;
       setStatus('Waiting for files');
+      refreshMmsUploadChecklist();
     });
   </script>
 </body>
